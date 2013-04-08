@@ -18,7 +18,7 @@ main = do
         putStrLn "usage: filename"
         exitFailure
     runtimeOExists <- doesFileExist "runtime.o"
-    when !runtimeOExists $ putStrLn "No runtime.o. Exiting."
+    when (not runtimeOExists) $ putStrLn "No runtime.o. Exiting."
     prog <- liftM generateAssembly $ readFile (args !! 0)
     let filename = "prog.S"
     writeFile filename prog
