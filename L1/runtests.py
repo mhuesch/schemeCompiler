@@ -8,8 +8,8 @@ def validateTestcase(self, input_file, result_file):
         self.assertEqual(prog.stdout.read(), results.read())
 
 def testCompilerTestCase(self, input_file, result_file):
-    subprocess.call(['comp', input_file])
-    prog = subprocess.Popen(['a.out'],stdout=subprocess.PIPE)
+    subprocess.call(['./comp', input_file])
+    prog = subprocess.Popen(['./a.out'],stdout=subprocess.PIPE)
     with open(result_file) as results:
         self.assertEqual(prog.stdout.read(), results.read())
 
@@ -28,6 +28,7 @@ class Tests(unittest.TestCase):
 
         for i,r in zip(all_inputs, all_results):
             testCompilerTestCase(self, i, r)
+
 
 if __name__ == '__main__':
     unittest.main()

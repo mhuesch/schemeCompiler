@@ -51,7 +51,7 @@ assembleFunction (Function label body) = (assembleLabel label) ++ "\n"
                                       ++ concatMap assembleInstruction body
 
 assembleInstruction :: Instruction -> String
-assembleInstruction (Assign r s) = "movl " ++ assembleS s ++ ", " ++ asssembleReg r ++ "\n"
+assembleInstruction (Assign r s) = "movl " ++ assembleS s ++ ", " ++ assembleReg r ++ "\n"
 assembleInstruction (ReadMem r1 r2 n) = ""
 assembleInstruction (Update r n s) = ""
 assembleInstruction (Arith r aop t) = ""
@@ -68,20 +68,20 @@ assembleInstruction (Print r t) = "pushl " ++ assembleT t ++ "\ncall print\naddl
 assembleInstruction (Allocate r t1 t2) = ""
 assembleInstruction (Array_Error r t1 t2) = ""
 
-asssembleReg :: Reg -> String
-asssembleReg (EAX) = "%eax"
-asssembleReg (ECX) = "%ecx"
+assembleReg :: Reg -> String
+assembleReg (EAX) = "%eax"
+assembleReg (ECX) = "%ecx"
 
 assembleNum :: Int -> String
 assembleNum n = "$" ++ show n
 
 assembleS :: S -> String
-assembleS (Sreg r) = asssembleReg r
+assembleS (Sreg r) = assembleReg r
 assembleS (Snum n) = assembleNum n
 assembleS (Slab l) = assembleLabel l
 
 assembleT :: T -> String
-assembleT (Treg r) = asssembleReg r
+assembleT (Treg r) = assembleReg r
 assembleT (Tnum n) = assembleNum n
 
 assembleLabel :: Label -> String
