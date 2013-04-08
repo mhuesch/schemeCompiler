@@ -1,3 +1,8 @@
 *.DS_Store
 prog.S
-runtime.o
+
+*.hi
+*.o
+*.S
+
+comp
