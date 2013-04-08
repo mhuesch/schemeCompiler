@@ -1,0 +1,28 @@
+(((edi <- 899)              ;; Number we'll be shifting
+  (ecx <- edi)              ;; Use edi so not clobbered by print
+
+  (eax <- (print ecx))      ;; Print it
+
+  (ecx <- edi)              ;; Restore edi value
+  (ecx -= 1)
+  (ecx <<= 3)               ;; Shift by 3
+  (ecx += 1)
+
+  (eax <- (print ecx))      ;; Print it
+
+  (ecx <- 2)
+  (ebx <- edi)              ;; Restore edi value
+  (ebx -= 1)
+  (ebx <<= ecx)             ;; Shift 
+  (ebx += 1)
+
+  (eax <- (print ebx))      ;; Print it
+
+  (ecx <- 6)
+  (ebx <- edi)              ;; Restore edi value
+  (ebx -= 1)
+  (ebx >>= ecx)             ;; Shift 
+  (ebx += 1)
+
+  (eax <- (print ebx))      ;; Print it
+  ))

@@ -1,0 +1,12 @@
+(((edi <- 19)
+  (cjump 11 < edi :t :f)  ;; Tricky comparison where order must be switched
+
+  :t
+  (eax <- (print 1))
+  (goto :done)
+
+  :f
+  (eax <- (print 3))
+  (goto :done)
+
+  :done))

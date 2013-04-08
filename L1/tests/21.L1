@@ -1,0 +1,21 @@
+(((eax <- 3)
+  (ecx <- 99)
+  (edx <- 101)
+  (call :f)
+  (eax <- (print eax)))
+
+ (:f
+  (ecx += eax)
+  (ecx -= 1)
+  (cjump ecx = edx :fst :snd)
+
+  :fst
+  (eax <- 9)
+  (goto :done)
+
+  :snd
+  (eax <- -7)
+  (goto :done)
+
+  :done
+  (return)))

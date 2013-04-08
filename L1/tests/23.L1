@@ -1,0 +1,47 @@
+(((esi <- 501)                  ;; Allocae array of size 250
+  (eax <- (allocate esi 99))
+  (edi <- eax)
+
+  (ebx <- 1)    ;; Loop counter
+
+  :loop
+  (cjump ebx < esi :keep_going :done)
+  :keep_going
+
+  ;; Compute current array index
+  (edx <- ebx)
+  (edx -= 1)    ;; Number conversion
+  (edx *= 2)    ;; 4a form for pointer
+  (edx += 4)    ;; Skip size word
+  (edx += edi)  ;; Add base pointer
+
+  (eax <- ebx)
+  (eax &= 15)
+  (cjump eax = 15 :seven :second)
+
+  :seven
+  ((mem edx 0) <- 15)
+  (goto :next)
+
+  :second
+  (eax <- ebx)
+  (eax &= 7)
+  (cjump eax = 7 :three :default)
+
+  :three
+  ((mem edx 0) <- 7)
+  (goto :next)
+
+  :default
+  ((mem edx 0) <- 1)
+  (goto :next)
+
+  :next
+  (ebx += 2)    ;; Increment counter
+  (goto :loop)  ;; Go to loop 
+
+
+
+  :done
+  (eax <- (print edi))
+  ))

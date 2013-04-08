@@ -1,0 +1,14 @@
+(((esi <- 87)
+  (call :f)
+  (eax <- (print eax)))
+ 
+ (:f
+  (eax <- (print 9))
+  (tail-call :g))
+ (:g
+  (eax <- (print 11))
+  (tail-call :h))
+ (:h
+  (eax <- (print 13))
+  (eax <- 45)
+  (return)))

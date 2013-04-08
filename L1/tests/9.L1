@@ -1,0 +1,15 @@
+(((esi <- 999)
+  (esi *= esi)
+  (eax <- (print esi))
+
+  (esi += esi)
+  (esi -= 1)
+  (eax <- (print esi))
+
+  (esi &= esi)
+  (eax <- (print esi))
+
+  (esi -= esi)
+  (esi += 1)
+  (eax <- (print esi))
+  ))

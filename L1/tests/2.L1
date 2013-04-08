@@ -1,0 +1,14 @@
+(((ecx <- 1)
+  (edx <- 3)
+
+  (cjump ecx < edx :first :second)
+  
+  :first
+  (eax <- (print 9))
+  (goto :done)
+
+  :second
+  (eax <- (print 35))
+  (goto :done)
+
+  :done))
