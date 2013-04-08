@@ -4,6 +4,8 @@ import Control.Monad
 import Control.Monad.Error
 import System.Environment
 import System.IO
+import System.Directory (doesFileExist)
+import System.Cmd (rawSystem)
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Prim (parserFail)
 
@@ -12,13 +14,75 @@ main :: IO ()
 main = do
     args <- getArgs
     contents <- readFile (args !! 0)
-    putStrLn . show . readProg $ contents
+    let filename = "prog.S"
+    writeFile filename $ generateAssembly contents
+    putStrLn "wrote assembly file"
+    runtimeOExists <- doesFileExist "runtime.o"
+    case runtimeOExists of
+        True -> putStrLn "runtime.o exists!"
+        False -> do putStrLn "making runtime.o file"
+                    rawSystem "gcc" ["-m32", "-c", "-O2", "-o", "runtime.o", "runtime.c"]
+                    putStrLn "created runtime.o"
+    putStrLn "next"
 
 
-readProg :: String -> ThrowsError Program
-readProg input = case parse parseProg "lisp" input of
-    Left err -> throwError $ Parser err
-    Right val -> return val
+
+
+
+generateAssembly :: String -> String
+generateAssembly input = case parse parseProg "lisp" input of
+    Left err -> mainPrefix ++ mainSuffix
+    Right val -> assembleProgram val
+
+assembleProgram :: Program -> String
+assembleProgram (Program mainBody funs) = mainPrefix
+                                       ++ concatMap assembleInstruction mainBody
+                                       ++ concatMap assembleFunction funs
+                                       ++ mainSuffix
+
+assembleFunction :: Function -> String
+assembleFunction (Function label body) = (assembleLabel label) ++ "\n"
+                                      ++ concatMap assembleInstruction body
+
+assembleInstruction :: Instruction -> String
+assembleInstruction (Assign r s) = ""
+assembleInstruction (ReadMem r1 r2 n) = ""
+assembleInstruction (Update r n s) = ""
+assembleInstruction (Arith r aop t) = ""
+assembleInstruction (ShiftSX r1 sop r2) = ""
+assembleInstruction (ShiftNum r sop n) = ""
+assembleInstruction (SaveCmp r t1 cmp t2) = ""
+assembleInstruction (ILab label) = ""
+assembleInstruction (Goto label) = ""
+assembleInstruction (Cjump t1 cmp t2 l1 l2) = ""
+assembleInstruction (Call u) = ""
+assembleInstruction (Tail_Call u) = ""
+assembleInstruction (Return) = ""
+assembleInstruction (Print r t) = ""
+assembleInstruction (Allocate r t1 t2) = ""
+assembleInstruction (Array_Error r t1 t2) = ""
+
+
+assembleLabel :: Label -> String
+assembleLabel (Label name) = ":" ++ name
+
+mainPrefix :: String
+mainPrefix = "pushl   %ebp\n"
+          ++ "movl    %esp, %ebp\n"
+          ++ "pushl   %ebx\n"
+          ++ "pushl   %esi\n"
+          ++ "pushl   %edi\n"
+          ++ "pushl   %ebp\n"
+          ++ "movl    %esp, %ebp\n"
+
+mainSuffix :: String
+mainSuffix = "popl   %ebp\n"
+          ++ "popl   %edi\n"
+          ++ "popl   %esi\n"
+          ++ "popl   %ebx\n"
+          ++ "leave\n"
+          ++ "ret\n"
+
 
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
