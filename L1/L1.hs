@@ -17,16 +17,11 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
+    runtimeOExists <- doesFileExist "runtime.o"
+    when !runtimeOExists $ putStrLn "No runtime.o. Exiting."
     prog <- liftM generateAssembly $ readFile (args !! 0)
     let filename = "prog.S"
     writeFile filename prog
-    putStrLn "wrote assembly file"
-    runtimeOExists <- doesFileExist "runtime.o"
-    case runtimeOExists of
-        True -> putStrLn "runtime.o exists!"
-        False -> do putStrLn "making runtime.o file"
-                    rawSystem "gcc" ["-m32", "-c", "-O2", "-o", "runtime.o", "runtime.c"]
-                    putStrLn "created runtime.o"
     rawSystem "as" ["--32", "-o", "prog.o", "prog.S"]
     rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "runtime.o"]
     return ()
