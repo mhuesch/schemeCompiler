@@ -4,6 +4,7 @@ import Control.Monad
 import Control.Monad.Error
 import System.Environment
 import System.IO
+import System.Exit (exitFailure)
 import System.Directory (doesFileExist)
 import System.Cmd (rawSystem)
 import Text.ParserCombinators.Parsec
@@ -13,9 +14,12 @@ import Text.Parsec.Prim (parserFail)
 main :: IO ()
 main = do
     args <- getArgs
-    contents <- readFile (args !! 0)
+    when (length args == 0) $ do
+        putStrLn "usage: filename"
+        exitFailure
+    prog <- liftM generateAssembly $ readFile (args !! 0)
     let filename = "prog.S"
-    writeFile filename $ generateAssembly contents
+    writeFile filename prog
     putStrLn "wrote assembly file"
     runtimeOExists <- doesFileExist "runtime.o"
     case runtimeOExists of
@@ -23,9 +27,9 @@ main = do
         False -> do putStrLn "making runtime.o file"
                     rawSystem "gcc" ["-m32", "-c", "-O2", "-o", "runtime.o", "runtime.c"]
                     putStrLn "created runtime.o"
-    putStrLn "next"
-
-
+    rawSystem "as" ["--32", "-o", "prog.o", "prog.S"]
+    rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "runtime.o"]
+    return ()
 
 
 
@@ -35,17 +39,19 @@ generateAssembly input = case parse parseProg "lisp" input of
     Right val -> assembleProgram val
 
 assembleProgram :: Program -> String
-assembleProgram (Program mainBody funs) = mainPrefix
+assembleProgram (Program mainBody funs) = fileHeader
+                                       ++ mainPrefix
                                        ++ concatMap assembleInstruction mainBody
                                        ++ concatMap assembleFunction funs
                                        ++ mainSuffix
+                                       ++ fileFooter
 
 assembleFunction :: Function -> String
 assembleFunction (Function label body) = (assembleLabel label) ++ "\n"
                                       ++ concatMap assembleInstruction body
 
 assembleInstruction :: Instruction -> String
-assembleInstruction (Assign r s) = ""
+assembleInstruction (Assign r s) = "movl " ++ assembleS s ++ ", " ++ asssembleReg r ++ "\n"
 assembleInstruction (ReadMem r1 r2 n) = ""
 assembleInstruction (Update r n s) = ""
 assembleInstruction (Arith r aop t) = ""
@@ -58,13 +64,38 @@ assembleInstruction (Cjump t1 cmp t2 l1 l2) = ""
 assembleInstruction (Call u) = ""
 assembleInstruction (Tail_Call u) = ""
 assembleInstruction (Return) = ""
-assembleInstruction (Print r t) = ""
+assembleInstruction (Print r t) = "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
 assembleInstruction (Allocate r t1 t2) = ""
 assembleInstruction (Array_Error r t1 t2) = ""
 
+asssembleReg :: Reg -> String
+asssembleReg (EAX) = "%eax"
+asssembleReg (ECX) = "%ecx"
+
+assembleNum :: Int -> String
+assembleNum n = "$" ++ show n
+
+assembleS :: S -> String
+assembleS (Sreg r) = asssembleReg r
+assembleS (Snum n) = assembleNum n
+assembleS (Slab l) = assembleLabel l
+
+assembleT :: T -> String
+assembleT (Treg r) = asssembleReg r
+assembleT (Tnum n) = assembleNum n
 
 assembleLabel :: Label -> String
 assembleLabel (Label name) = ":" ++ name
+
+fileHeader :: String
+fileHeader = "    .text\n"
+          ++ "    .globl go\n"
+          ++ "    .type   go, @function\n"
+          ++ "go:\n"
+
+fileFooter :: String
+fileFooter = "    .size go, .-go\n"
+          ++ "    .section    .note.GNU-stack,\"\",@progbits\n"
 
 mainPrefix :: String
 mainPrefix = "pushl   %ebp\n"
