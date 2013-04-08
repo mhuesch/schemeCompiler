@@ -6,3 +6,4 @@ prog.S
 *.S
 
 comp
+a.out
