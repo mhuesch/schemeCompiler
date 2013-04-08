@@ -2,4 +2,4 @@
 
 # pass --help on the commandline to get the flags
 
-exec racket $(dirname $0)/2-interp-main.rkt "$@"
+exec /home/software/racket-5.3.3/bin/racket $(dirname $0)/2-interp-main.rkt "$@"

@@ -6,4 +6,4 @@ then
    exit 1
 fi
 
-racket 4-norm-steps.rkt
+/home/software/racket-5.3.3/bin/racket 4-norm-steps.rkt
