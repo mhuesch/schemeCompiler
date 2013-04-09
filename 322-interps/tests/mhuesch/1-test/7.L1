@@ -1,6 +1,0 @@
-(((edi <- 101)
-  (eax <- (allocate edi 5))
-  (esi <- eax)
-
-  (eax <- (array-error esi 103))    ;; Signal array error (out of bounds)
-  ))

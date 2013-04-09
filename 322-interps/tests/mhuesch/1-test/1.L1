@@ -1,7 +1,0 @@
-(((edx <- 5)
-  (edx += 4)
-  (edx -= 1)
-  (edx *= 99)
-  (edx += 1)
-  (edx &= 89)
-  (eax <- (print edx))))

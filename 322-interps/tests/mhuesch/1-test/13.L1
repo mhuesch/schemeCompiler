@@ -1,7 +1,0 @@
-(((call :fun)
-  (eax <- (print eax)))
- 
- (:fun
-  (eax <- (print 3))
-  (eax <- 5)
-  (return)))

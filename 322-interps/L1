@@ -1,5 +1,0 @@
-#!/bin/sh
-
-# pass --help on the commandline to get the flags
-
-exec /home/software/racket-5.3.3/bin/racket $(dirname $0)/1-interp-main.rkt "$@"

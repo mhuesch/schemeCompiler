@@ -1,3 +1,0 @@
-#!/bin/sh
-
-/home/software/racket-5.3.3/bin/racket $(dirname $0)/run-test-fests.rkt "$@"
