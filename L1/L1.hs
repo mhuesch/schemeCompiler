@@ -97,9 +97,9 @@ assembleInstruction (SaveCmp r (Treg r2) Equal (Tnum n)) = return $ "cmpl " ++ a
 
 -- Cjump
 -- reg - reg
-assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
 -- reg - constant
 assembleInstruction (Cjump (Treg r) LessThan (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
 assembleInstruction (Cjump (Treg r) LessThanEqual (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
