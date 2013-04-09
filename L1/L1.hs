@@ -433,8 +433,8 @@ parseS = (liftM Slab parseLabel)
 parseLabel :: Parser Label
 parseLabel = do
     char ':'
-    l <- letter
-    ls <- many (oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_']))
+    l <- oneOf (['_'] ++ ['a'..'z'] ++ ['A'..'Z'])
+    ls <- many (oneOf (['_'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
     return $ Label (l:ls)
 
 parseNumber :: Parser Int
