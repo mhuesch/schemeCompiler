@@ -340,7 +340,10 @@ parseUpdate = do
     r <- parseReg
     spaces1
     n <- parseNumber
-    string ") <- "
+    char ')'
+    spaces1
+    string "<-"
+    spaces1
     s <- parseS
     return $ Update r n s
 
