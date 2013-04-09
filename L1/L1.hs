@@ -219,10 +219,13 @@ extractValue (Right val) = val
 
 parseProg :: Parser Program
 parseProg = do
+    whitespaceOrComment
     char '('
+    whitespaceOrComment
     main <- parseMain
     whitespaceOrComment
     funs <- parseFunctions
+    whitespaceOrComment
     char ')'
     return $ Program main funs
 
@@ -230,6 +233,7 @@ parseProg = do
 parseMain :: Parser [Instruction]
 parseMain = do
     char '('
+    whitespaceOrComment
     ls <- parseInstructions
     char ')'
     return ls
@@ -427,7 +431,7 @@ parseLabel :: Parser Label
 parseLabel = do
     char ':'
     l <- letter
-    ls <- many ((oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])))
+    ls <- many (oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_']))
     return $ Label (l:ls)
 
 parseNumber :: Parser Int
