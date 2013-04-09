@@ -42,45 +42,110 @@ assembleProgram (Program mainBody funs) = fileHeader
                                        ++ fileFooter
 
 assembleFunction :: Function -> String
-assembleFunction (Function label body) = (assembleLabel label) ++ "\n"
+assembleFunction (Function label body) = (underscoreLabel label) ++ "\n"
                                       ++ concatMap assembleInstruction body
 
 assembleInstruction :: Instruction -> String
 assembleInstruction (Assign r s) = "movl " ++ assembleS s ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (ReadMem r1 r2 n) = ""
-assembleInstruction (Update r n s) = ""
-assembleInstruction (Arith r aop t) = ""
-assembleInstruction (ShiftSX r1 sop r2) = ""
-assembleInstruction (ShiftNum r sop n) = ""
-assembleInstruction (SaveCmp r t1 cmp t2) = ""
-assembleInstruction (ILab label) = ""
-assembleInstruction (Goto label) = ""
-assembleInstruction (Cjump t1 cmp t2 l1 l2) = ""
+assembleInstruction (ReadMem r1 r2 n) = "movl " ++ show n ++ "(" ++ assembleReg r2 ++ "), " ++ assembleReg r1 ++ "\n"
+assembleInstruction (Update r n s) = "movl " ++ assembleReg r ++ ", " ++ show n ++ "(" ++ assembleS s ++ ")\n"
 assembleInstruction (Call u) = ""
-assembleInstruction (Tail_Call u) = ""
-assembleInstruction (Return) = ""
+
+-- Arith op
+assembleInstruction (Arith r Add t) = "addl " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (Arith r Sub t) = "subl " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (Arith r Mult t) = "imull " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (Arith r And t) = "and " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+
+-- Shift op
+assembleInstruction (ShiftSX r1 ShiftLeft r2) = "sall %cl, " ++ assembleReg r1 ++ "\n"
+assembleInstruction (ShiftSX r1 ShiftRight r2) = "sarl %cl, " ++ assembleReg r1 ++ "\n"
+assembleInstruction (ShiftNum r ShiftLeft n) = "sall " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (ShiftNum r ShiftRight n) = "sarl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n"
+
+-- SaveCmp
+-- num - num
+assembleInstruction (SaveCmp r (Tnum n1) LessThan (Tnum n2)) = "movl " ++ assembleCompare (n1 < n2) ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n1) LessThanEqual (Tnum n2)) = "movl " ++ assembleCompare (n1 <= n2) ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n1) Equal (Tnum n2)) = "movl " ++ assembleCompare (n1 == n2) ++ ", " ++ assembleReg r ++ "\n"
+-- reg - reg
+assembleInstruction (SaveCmp r (Treg r2) LessThan (Treg r3)) = "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsetl " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) LessThanEqual (Treg r3)) = "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsetle " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) Equal (Treg r3)) = "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+-- num - reg
+assembleInstruction (SaveCmp r (Tnum n) LessThan (Treg r2)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetg " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n) LessThanEqual (Treg r2)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetge " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n) Equal (Treg r2)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+-- reg - num
+assembleInstruction (SaveCmp r (Treg r2) LessThan (Tnum n)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetl " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) LessThanEqual (Tnum n)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetle " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) Equal (Tnum n)) = "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+
+-- Cjump
+-- reg - reg
+assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
+assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
+assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
+-- reg - constant
+assembleInstruction (Cjump (Treg r) LessThan (Tnum n) l1 l2) = "cmpl " ++ assembleConstant n ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) LessThanEqual (Tnum n) l1 l2) = "cmpl " ++ assembleConstant n ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) Equal (Tnum n) l1 l2) = "cmpl " ++ assembleConstant n ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+-- constant - reg
+assembleInstruction (Cjump (Tnum n) LessThan (Treg r) l1 l2) = "cmpl " ++ assembleConstant n ++ "\njg " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) LessThanEqual (Treg r) l1 l2) = "cmpl " ++ assembleConstant n ++ "\njge " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) Equal (Treg r) l1 l2) = "cmpl " ++ assembleConstant n ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+-- constant - constant
+assembleInstruction (Cjump (Tnum n1) LessThan (Tnum n2) l1 l2) = "jmp " ++ (if (n1 < n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
+assembleInstruction (Cjump (Tnum n1) LessThanEqual (Tnum n2) l1 l2) = "jmp " ++ (if (n1 <= n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
+assembleInstruction (Cjump (Tnum n1) Equal (Tnum n2) l1 l2) = "jmp " ++ (if (n1 == n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
+
+assembleInstruction (ILab label) = colonLabel label ++ "\n"
+assembleInstruction (Goto label) = "jmp " ++ colonLabel label ++ "\n"
+assembleInstruction (Tail_Call (Ureg r)) = "movl %ebp, %esp\n    jmp *" ++ assembleReg r ++ "\n"
+assembleInstruction (Tail_Call (Ulab l)) = "movl %ebp, %esp\n    jmp " ++ underscoreLabel l ++ "\n"
+assembleInstruction (Return) = "movl %ebp, %esp\n    pop %ebp\n    ret\n"
 assembleInstruction (Print r t) = "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
-assembleInstruction (Allocate r t1 t2) = ""
-assembleInstruction (Array_Error r t1 t2) = ""
+assembleInstruction (Allocate r t1 t2) = "pushl" ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "call allocate\n" ++ "addl $8,%esp\n"
+assembleInstruction (Array_Error r t1 t2) = "pushl" ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "call array-error\n" ++ "addl $8,%esp\n"
+
+reg8Bit :: Reg -> String
+reg8Bit (EAX) = "%al"
+reg8Bit (ECX) = "%cl"
+reg8Bit (EDX) = "%dl"
+reg8Bit (EBX) = "%bl"
+
+assembleCompare :: Bool -> String
+assembleCompare test = if test
+                          then assembleConstant 1
+                          else assembleConstant 0
 
 assembleReg :: Reg -> String
 assembleReg (EAX) = "%eax"
 assembleReg (ECX) = "%ecx"
+assembleReg (ESI) = "%esi"
+assembleReg (EDI) = "%edi"
+assembleReg (EBP) = "%ebp"
+assembleReg (ESP) = "%esp"
+assembleReg (EDX) = "%edx"
+assembleReg (EBX) = "%ebx"
 
-assembleNum :: Int -> String
-assembleNum n = "$" ++ show n
+assembleConstant :: Int -> String
+assembleConstant n = "$" ++ show n
 
 assembleS :: S -> String
 assembleS (Sreg r) = assembleReg r
-assembleS (Snum n) = assembleNum n
-assembleS (Slab l) = assembleLabel l
+assembleS (Snum n) = assembleConstant n
+assembleS (Slab l) = "$" ++ underscoreLabel l
 
 assembleT :: T -> String
 assembleT (Treg r) = assembleReg r
-assembleT (Tnum n) = assembleNum n
+assembleT (Tnum n) = assembleConstant n
 
-assembleLabel :: Label -> String
-assembleLabel (Label name) = ":" ++ name
+colonLabel :: Label -> String
+colonLabel (Label name) = ":" ++ name
+
+underscoreLabel :: Label -> String
+underscoreLabel (Label name) = "_" ++ name
 
 fileHeader :: String
 fileHeader = "    .text\n"
