@@ -43,24 +43,26 @@ assembleProgram (Program mainBody funs) = do
     return $ fileHeader
           ++ mainPrefix
           ++ mainAssem
-          ++ funAssem
           ++ mainSuffix
+          ++ funAssem
           ++ fileFooter
 
 assembleFunction :: MonadState Int m => Function -> m String
-assembleFunction (Function label body) = liftM ((funLabel ++) . concat) $ mapM assembleInstruction body
+assembleFunction (Function label body) = do
+    bodyAssem <- liftM concat $ mapM assembleInstruction body
+    return $ funLabel ++ bodyAssem
     where
-        funLabel = (underscoreLabel label) ++ "\n"
+        funLabel = (colonLabel label) ++ "\n"
 
 assembleInstruction :: MonadState Int m => Instruction -> m String
 assembleInstruction (Assign r s) = return $ "movl " ++ assembleS s ++ ", " ++ assembleReg r ++ "\n"
 assembleInstruction (ReadMem r1 r2 n) = return $ "movl " ++ show n ++ "(" ++ assembleReg r2 ++ "), " ++ assembleReg r1 ++ "\n"
-assembleInstruction (Update r n s) = return $ "movl " ++ assembleReg r ++ ", " ++ show n ++ "(" ++ assembleS s ++ ")\n"
+assembleInstruction (Update r n s) = return $ "movl " ++ assembleS s ++ ", " ++ show n ++ "(" ++ assembleReg r ++ ")\n"
 assembleInstruction (Call u) = do
     count <- get
-    let newlabel = "$_fun_ret_" ++ show count
+    let newlabel = "_fun_ret_" ++ show count
     put $ count + 1
-    return $ "pushl " ++ newlabel ++ "\npushl %ebp\nmovl %esp, %ebp\njmp " ++ assembleU u ++ "\n" ++ newlabel ++ ":\n"
+    return $ "pushl $" ++ newlabel ++ "\npushl %ebp\nmovl %esp, %ebp\njmp " ++ assembleU u ++ "\n" ++ newlabel ++ ":\n"
 
 
 -- Arith op
@@ -95,29 +97,29 @@ assembleInstruction (SaveCmp r (Treg r2) Equal (Tnum n)) = return $ "cmpl " ++ a
 
 -- Cjump
 -- reg - reg
-assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
-assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
-assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2
+assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r1 ++ ", " ++ assembleReg r2 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
 -- reg - constant
-assembleInstruction (Cjump (Treg r) LessThan (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r) LessThanEqual (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r) Equal (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) LessThan (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) LessThanEqual (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) Equal (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
 -- constant - reg
-assembleInstruction (Cjump (Tnum n) LessThan (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\njg " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Tnum n) LessThanEqual (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\njge " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Tnum n) Equal (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) LessThan (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njg " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) LessThanEqual (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njge " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) Equal (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
 -- constant - constant
 assembleInstruction (Cjump (Tnum n1) LessThan (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 < n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
 assembleInstruction (Cjump (Tnum n1) LessThanEqual (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 <= n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
 assembleInstruction (Cjump (Tnum n1) Equal (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 == n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
 
 assembleInstruction (ILab label) = return $ colonLabel label ++ "\n"
-assembleInstruction (Goto label) = return $ "jmp " ++ colonLabel label ++ "\n"
+assembleInstruction (Goto label) = return $ "jmp " ++ underscoreLabel label ++ "\n"
 assembleInstruction (Tail_Call u) = return $ "movl %ebp, %esp\n    jmp " ++ assembleU u ++ "\n"
 assembleInstruction (Return) = return $ "movl %ebp, %esp\n    pop %ebp\n    ret\n"
 assembleInstruction (Print r t) = return $ "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
-assembleInstruction (Allocate r t1 t2) = return $ "pushl" ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "call allocate\n" ++ "addl $8,%esp\n"
-assembleInstruction (Array_Error r t1 t2) = return $ "pushl" ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "call array-error\n" ++ "addl $8,%esp\n"
+assembleInstruction (Allocate r t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall allocate\n" ++ "addl $8,%esp\n"
+assembleInstruction (Array_Error r t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall print_error\n" ++ "addl $8,%esp\n"
 
 reg8Bit :: Reg -> String
 reg8Bit (EAX) = "%al"
@@ -157,7 +159,7 @@ assembleU (Ureg r) = "*" ++ assembleReg r
 assembleU (Ulab l) = underscoreLabel l
 
 colonLabel :: Label -> String
-colonLabel (Label name) = ":" ++ name
+colonLabel (Label name) = "_" ++ name ++ ":"
 
 underscoreLabel :: Label -> String
 underscoreLabel (Label name) = "_" ++ name

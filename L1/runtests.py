@@ -16,15 +16,15 @@ def testCompilerTestCase(self, input_file, result_file):
 class Tests(unittest.TestCase):
 
     def testValidateAll(self):
-        all_inputs = glob.glob('tests/*.L1')
-        all_results = glob.glob('tests/*.res')
+        all_inputs = sorted(glob.glob('tests/*.L1'))
+        all_results = sorted(glob.glob('tests/*.res'))
 
         for i,r in zip(all_inputs, all_results):
             validateTestcase(self, i, r)
 
     def testCompilerAll(self):
-        all_inputs = glob.glob('tests/*.L1')
-        all_results = glob.glob('tests/*.res')
+        all_inputs = sorted(glob.glob('tests/*.L1'))
+        all_results = sorted(glob.glob('tests/*.res'))
 
         for i,r in zip(all_inputs, all_results):
             testCompilerTestCase(self, i, r)
