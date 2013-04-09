@@ -1,0 +1,16 @@
+(((esi <- 99) (call :f) (eax <- (print eax)))
+ 
+ (:f
+  (esp -= 4)
+  ((mem esp 0) <- esi)
+  (esi <- :g)
+  (call esi)
+  (esi <- (mem esp 0))
+  (esp += 4)
+  (return))
+ (:g
+  (tail-call :h))
+ (:h
+  (eax <- (print 9))
+  (eax <- 55)
+  (return)))

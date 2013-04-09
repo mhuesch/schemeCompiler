@@ -1,0 +1,17 @@
+(((call :f)
+  (eax <- (print 99)))
+
+ (:f
+  (eax <- (allocate 5 5))
+  (ecx <- eax)
+  (tail-call :g))
+ (:g
+  (esp -= 4)
+  ((mem esp 0) <- esi)
+  (esi <- ecx)
+  (eax <- (print 45))
+  (eax <- (array-error esi 99))
+  (eax <- (print -77))
+  (esi <- (mem esp 0))
+  (esp += 4)
+  (return)))

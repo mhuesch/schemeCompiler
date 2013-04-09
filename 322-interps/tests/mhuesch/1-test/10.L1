@@ -1,0 +1,12 @@
+(((esi <- 887)
+  (eax <- esi)
+  (eax <- (print eax))
+
+  (eax <- esi)
+  (eax -= -880)
+  (eax <- (print eax))
+
+  (eax <- esi)
+  (eax += -70)
+  (eax <- (print eax))
+  ))

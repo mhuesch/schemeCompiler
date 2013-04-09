@@ -1,0 +1,7 @@
+(((esi <- -1)
+  (esi >>= 3)
+  (eax <- (print esi))
+
+  (esi <<= 9)
+  (esi += 1)
+  (eax <- (print esi))))

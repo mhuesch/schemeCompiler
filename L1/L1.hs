@@ -469,8 +469,8 @@ parseShift reg sop = numShift <|> regShift
             return $ ShiftSX reg sop reg2
 
 parseCMP :: Parser CMP
-parseCMP = (char '<' >> ((char '=' >> return LessThan)
-                        <|> return LessThanEqual))
+parseCMP = (char '<' >> ((char '=' >> return LessThanEqual)
+                        <|> return LessThan))
        <|> (char '=' >> return Equal)
 
 

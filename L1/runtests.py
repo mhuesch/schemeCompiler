@@ -26,8 +26,8 @@ class Tests(unittest.TestCase):
     '''
 
     def testCompilerAll(self):
-        all_inputs = sorted(glob.glob('tests/*.L1'))
-        all_results = sorted(glob.glob('tests/*.res'))
+        all_inputs = sorted(glob.glob('../322-interps/tests/L1/*.L1'))
+        all_results = sorted(glob.glob('../322-interps/tests/L1/*.res'))
 
         for i,r in zip(all_inputs, all_results):
             testCompilerTestCase(self, i, r)

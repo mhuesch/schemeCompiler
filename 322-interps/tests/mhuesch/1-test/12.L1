@@ -1,0 +1,5 @@
+(((esi <- 7)
+  (eax <- (allocate esi 1))
+  (eax <- (array-error eax 9))
+  (eax <- (print 44445))        ;; Shouldn't print
+  ))

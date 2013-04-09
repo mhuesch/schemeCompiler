@@ -1,0 +1,7 @@
+(((edi <- 77)
+  (eax <- 5)
+  (eax <- 1 = edi)
+  (eax *= 2)
+  (eax -= 1)
+  (eax <- (print eax))
+  ))
