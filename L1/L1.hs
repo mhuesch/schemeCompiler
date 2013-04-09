@@ -19,16 +19,20 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
+    assembleFile (args !! 0)
+
+
+assembleFile :: FilePath -> IO ()
+assembleFile fp = do
     runtimeOExists <- doesFileExist "runtime.o"
     when (not runtimeOExists) $ putStrLn "No runtime.o. Exiting."
-    contents <- readFile (args !! 0)
+    contents <- readFile fp
     let filename = "prog.S"
         (prog, _) = runState (generateAssembly contents) 0
     writeFile filename prog
     rawSystem "as" ["--32", "-o", "prog.o", "prog.S"]
     rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "runtime.o"]
     return ()
-
 
 
 generateAssembly :: MonadState Int m => String -> m String
