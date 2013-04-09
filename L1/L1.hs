@@ -298,13 +298,13 @@ parseC = do
 parseCall :: Parser Instruction
 parseCall = do
     string "all"
-    space
+    spaces1
     (liftM Call parseU)
 
 parseTailCall :: Parser Instruction
 parseTailCall = do
     string "tail-call"
-    space
+    spaces1
     (liftM Tail_Call parseU)
 
 parseReturn :: Parser Instruction
@@ -315,30 +315,30 @@ parseReturn = do
 parseGoto :: Parser Instruction
 parseGoto = do
     string "goto"
-    space
+    spaces1
     (liftM Goto parseLabel)
 
 parseCjump :: Parser Instruction
 parseCjump = do
     string "jump"
-    space
+    spaces1
     t1 <- parseT
-    space
+    spaces1
     cmp <- parseCMP
-    space
+    spaces1
     t2 <- parseT
-    space
+    spaces1
     l1 <- parseLabel
-    space
+    spaces1
     l2 <- parseLabel
     return $ Cjump t1 cmp t2 l1 l2
 
 parseUpdate :: Parser Instruction
 parseUpdate = do
     string "(mem"
-    space
+    spaces1
     r <- parseReg
-    space
+    spaces1
     n <- parseNumber
     string ") <- "
     s <- parseS
@@ -347,9 +347,9 @@ parseUpdate = do
 parseRegOp :: Parser Instruction
 parseRegOp = do
     reg <- parseReg
-    space
+    spaces1
     op <- many1 (noneOf " ")
-    space
+    spaces1
     case op of
         "<-" -> parseArrow reg
         "+=" -> parseArith reg Add
@@ -368,7 +368,7 @@ parseArrowParen :: Reg -> Parser Instruction
 parseArrowParen reg = do
     char '('
     tok <- many1 (oneOf (['a'..'z'] ++ ['-']))
-    space
+    spaces1
     case tok of
         "print" -> do
             t <- parseT
@@ -376,19 +376,19 @@ parseArrowParen reg = do
             return $ Print reg t
         "allocate" -> do
             t1 <- parseT
-            space
+            spaces1
             t2 <- parseT
             char ')'
             return $ Allocate reg t1 t2
         "array-error" -> do
             t1 <- parseT
-            space
+            spaces1
             t2 <- parseT
             char ')'
             return $ Array_Error reg t1 t2
         "mem" -> do
             r2 <- parseReg
-            space
+            spaces1
             n <- parseNumber
             char ')'
             return $ ReadMem reg r2 n
@@ -396,9 +396,9 @@ parseArrowParen reg = do
 parseSaveCmp :: Reg -> Parser Instruction
 parseSaveCmp reg = do
     t1 <- parseT
-    space
+    spaces1
     cmp <- parseCMP
-    space
+    spaces1
     t2 <- parseT
     return $ SaveCmp reg t1 cmp t2
 
