@@ -290,6 +290,7 @@ parseInstruction = (liftM ILab parseLabel) <|> do
          <|> parseGoto
          <|> parseUpdate
          <|> parseRegOp
+    spaces
     char ')'
     return instr
 
@@ -379,24 +380,28 @@ parseArrowParen reg = do
     case tok of
         "print" -> do
             t <- parseT
+            spaces
             char ')'
             return $ Print reg t
         "allocate" -> do
             t1 <- parseT
             spaces1
             t2 <- parseT
+            spaces
             char ')'
             return $ Allocate reg t1 t2
         "array-error" -> do
             t1 <- parseT
             spaces1
             t2 <- parseT
+            spaces
             char ')'
             return $ Array_Error reg t1 t2
         "mem" -> do
             r2 <- parseReg
             spaces1
             n <- parseNumber
+            spaces
             char ')'
             return $ ReadMem reg r2 n
 
