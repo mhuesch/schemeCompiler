@@ -33,7 +33,7 @@ main = do
 
 generateAssembly :: MonadState Int m => String -> m String
 generateAssembly input = case parse parseProg "lisp" input of
-    Left err -> return $ mainPrefix ++ mainSuffix
+    Left err -> return $ fileHeader ++ mainPrefix ++ mainSuffix ++ fileFooter
     Right val -> assembleProgram val
 
 assembleProgram :: MonadState Int m => Program -> m String
@@ -427,7 +427,7 @@ parseLabel :: Parser Label
 parseLabel = do
     char ':'
     l <- letter
-    ls <- many (oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_']))
+    ls <- many ((oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])))
     return $ Label (l:ls)
 
 parseNumber :: Parser Int

@@ -7,3 +7,5 @@ prog.S
 
 comp
 a.out
+
+322-interps/tests/*
