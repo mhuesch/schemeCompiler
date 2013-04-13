@@ -1,5 +1,8 @@
 module L2.Grammar where
 
+import Control.Applicative
+import Test.QuickCheck
+
 data L2Spill = L2Spill [L2Instruction] L2Var Int L2Var
                deriving (Show)
 
@@ -80,3 +83,96 @@ data L2CMP = L2LessThan
 {- Labels -}
 data L2Label = L2Label String
              deriving (Show, Eq)
+
+
+{- Arbitrary instances -}
+instance Arbitrary L2Program where
+    arbitrary = L2Program <$> arbitrary <*> arbitrary
+
+instance Arbitrary L2Function where
+    arbitrary = L2Function <$> arbitrary <*> arbitrary
+
+instance Arbitrary L2Instruction where
+    arbitrary = oneof [L2Assign <$> arbitrary <*> arbitrary
+                      ,L2ReadMem <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2Update <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2Arith <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2ShiftSX <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2ShiftNum <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2SaveCmp <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2ILab <$> arbitrary
+                      ,L2Goto <$> arbitrary
+                      ,L2Cjump <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2Call <$> arbitrary
+                      ,L2TailCall <$> arbitrary
+                      ,return L2Return
+                      ,L2Print <$> arbitrary <*> arbitrary
+                      ,L2Allocate <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2ArrayError <$> arbitrary <*> arbitrary <*> arbitrary
+                      ]
+
+instance Arbitrary L2S where
+    arbitrary = oneof [L2SX <$> arbitrary
+                      ,L2Slab <$> arbitrary
+                      ,L2Snum <$> arbitrary
+                      ]
+
+instance Arbitrary L2U where
+    arbitrary = oneof [L2Ulab <$> arbitrary
+                      ,L2UX <$> arbitrary
+                      ]
+
+instance Arbitrary L2T where
+    arbitrary = oneof [L2Tnum <$> arbitrary
+                      ,L2TX <$> arbitrary
+                      ]
+
+instance Arbitrary L2X where
+    arbitrary = oneof [L2Xreg <$> arbitrary
+                      ,L2Xvar <$> arbitrary
+                      ]
+
+instance Arbitrary L2Reg where
+    arbitrary = elements [L2ESI
+                         ,L2EDI
+                         ,L2EBP
+                         ,L2ESP
+                         ,L2EDX
+                         ,L2EBX
+                         ,L2EAX
+                         ,L2ECX
+                         ]
+
+instance Arbitrary L2Var where
+    arbitrary = do
+        v <- elements (['_'] ++ ['a'..'z'] ++ ['A'..'Z'])
+        vs <- listOf $ elements (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'])
+        return $ L2Var (v:vs)
+
+instance Arbitrary L2AOP where
+    arbitrary = elements [L2Add
+                         ,L2Sub
+                         ,L2Mult
+                         ,L2And
+                         ]
+
+instance Arbitrary L2SOP where
+    arbitrary = elements [L2ShiftLeft
+                         ,L2ShiftRight
+                         ]
+
+instance Arbitrary L2CMP where
+    arbitrary = elements [L2LessThan
+                         ,L2LessThanEqual
+                         ,L2Equal
+                         ]
+
+instance Arbitrary L2Label where
+    arbitrary = do
+        v <- elements (['_'] ++ ['a'..'z'] ++ ['A'..'Z'])
+        vs <- listOf $ elements (['_'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'])
+        return $ L2Label (v:vs)
+
+
+
+
