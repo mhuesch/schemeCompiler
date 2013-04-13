@@ -1,4 +1,4 @@
-module Spill.Main where
+module Main where
 
 import Control.Monad
 import System.Exit (exitFailure)
@@ -16,11 +16,7 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
-    spillFile (args !! 0)
-
-spillFile :: FilePath -> IO ()
-spillFile fp = do
-    result <- parseFromFile parseSpill fp
+    result <- parseFromFile parseSpill (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
         Right sp -> putStrLn . displayInstrList . spillSpill $ sp
