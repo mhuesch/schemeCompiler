@@ -1,5 +1,8 @@
 module L2.Grammar where
 
+data L2Spill = L2Spill [L2Instruction] L2Var Int L2Var
+               deriving (Show)
+
 data L2Program = L2Program [L2Instruction] [L2Function]
                  deriving (Show, Eq)
 
@@ -18,11 +21,11 @@ data L2Instruction = L2Assign L2X L2S
                    | L2Goto L2Label
                    | L2Cjump L2T L2CMP L2T L2Label L2Label
                    | L2Call L2U
-                   | L2Tail_Call L2U
+                   | L2TailCall L2U
                    | L2Return
                    | L2Print L2X L2T
                    | L2Allocate L2X L2T L2T
-                   | L2Array_Error L2X L2T L2T
+                   | L2ArrayError L2X L2T L2T
                    deriving (Show, Eq)
 
 

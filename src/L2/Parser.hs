@@ -1,7 +1,4 @@
-module L2.Parser
-( readProg
-, readInstruction
-) where
+module L2.Parser where
 
 import Control.Monad (liftM)
 import Text.ParserCombinators.Parsec hiding (State)
@@ -14,13 +11,34 @@ import L2.Grammar
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
 
+{- Spill parsers -}
+parseSpill :: Parser L2Spill
+parseSpill = do
+    whitespaceOrComment
+    body <- parseMain
+    whitespaceOrComment
+    var <- parseVar
+    whitespaceOrComment
+    offset <- parseNumber
+    whitespaceOrComment
+    spillPrefix <- parseVar
+    return $ L2Spill body var offset spillPrefix
+
+
+{- Regular L2 parsers -}
 readProg :: String -> L2Program
 readProg input = case parse parseProg "lisp" input of
     Left err -> L2Program [] []
     Right prog -> prog
 
+readInstrList :: String -> [L2Instruction]
+readInstrList input = case parse parseMain "lisp" input of
+    Left err -> error $ show err
+    Right m -> m
+
 readInstruction :: String -> L2Instruction
 readInstruction input = case parse parseInstruction "lisp" input of
+    Left err -> error $ show err
     Right instr -> instr
 
 parseProg :: Parser L2Program
@@ -68,12 +86,9 @@ whitespaceOrComment = do
     spaces
     c <- lookAhead anyChar
     case c of
-        '(' -> return ()
-        ':' -> return ()
-        ')' -> return ()
         ';' -> skipComment
         '\n' -> char '\n' >> whitespaceOrComment
-        x -> parserFail $ "Unrecognized: " ++ show x
+        otherwise -> return ()
 
 skipComment :: Parser ()
 skipComment = do
@@ -127,7 +142,7 @@ parseTailCall :: Parser L2Instruction
 parseTailCall = do
     string "tail-call"
     spaces1
-    (liftM L2Tail_Call parseU)
+    (liftM L2TailCall parseU)
 
 parseReturn :: Parser L2Instruction
 parseReturn = do
@@ -198,7 +213,7 @@ parseArrowParen x = do
             t2 <- parseT
             spaces
             char ')'
-            return $ L2Array_Error x t1 t2
+            return $ L2ArrayError x t1 t2
         "mem" -> do
             x2 <- parseX
             spaces1
@@ -223,34 +238,47 @@ parseAssign x = do
     return $ L2Assign x s
 
 parseX :: Parser L2X
-parseX = (liftM L2Xreg $ try (parseReg))
-     <|> (liftM L2Xvar parseVar)
-
-parseReg :: Parser L2Reg
-parseReg = do
-    tok <- many1 letter
-    case tok of
-        "eax" -> return L2EAX
-        "ecx" -> return L2ECX
-        "edx" -> return L2EDX
-        "ebx" -> return L2EBX
-        "esi" -> return L2ESI
-        "edi" -> return L2EDI
-        "ebp" -> return L2EBP
-        "esp" -> return L2ESP
-        otherwise -> parserFail "Non register"
-
-parseVar :: Parser L2Var
-parseVar = do
+parseX = do
     v <- oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'])
     vs <- many (oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
-    return $ L2Var (v:vs)
+    case (v:vs) of
+        "eax" -> retReg L2EAX
+        "ecx" -> retReg L2ECX
+        "edx" -> retReg L2EDX
+        "ebx" -> retReg L2EBX
+        "esi" -> retReg L2ESI
+        "edi" -> retReg L2EDI
+        "ebp" -> retReg L2EBP
+        "esp" -> retReg L2ESP
+        otherwise -> return . L2Xvar . L2Var $ (v:vs)
+    where
+        retReg = return . L2Xreg
 
 {- parseS -}
 parseS :: Parser L2S
 parseS = (liftM L2Slab parseLabel)
-     <|> (liftM L2Snum parseNumber)
-     <|> (liftM L2SX parseX)
+     <|> parseSNegOrX
+     <|> (liftM L2Snum parsePos)
+
+parseSNegOrX :: Parser L2S
+parseSNegOrX = do
+    v <- oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'])
+    vs <- many (oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+    let tok = (v:vs)
+    case tok of
+        "eax" -> retReg L2EAX
+        "ecx" -> retReg L2ECX
+        "edx" -> retReg L2EDX
+        "ebx" -> retReg L2EBX
+        "esi" -> retReg L2ESI
+        "edi" -> retReg L2EDI
+        "ebp" -> retReg L2EBP
+        "esp" -> retReg L2ESP
+        otherwise -> case reads tok :: [(Int,String)] of
+                         [(n,"")] -> return $ L2Snum n
+                         otherwise -> return . L2SX . L2Xvar . L2Var $ tok
+    where
+        retReg = return . L2SX . L2Xreg
 
 parseLabel :: Parser L2Label
 parseLabel = do
@@ -279,8 +307,34 @@ parseU = (liftM L2Ulab parseLabel)
      <|> (liftM L2UX parseX)
 
 parseT :: Parser L2T
-parseT = (liftM L2Tnum parseNumber)
-     <|> (liftM L2TX parseX)
+parseT = parseTNegOrX
+     <|> (liftM L2Tnum parsePos)
+
+parseVar :: Parser L2Var
+parseVar = do
+    v <- oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'])
+    vs <- many (oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+    return $ L2Var (v:vs)
+
+parseTNegOrX :: Parser L2T
+parseTNegOrX = do
+    v <- oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'])
+    vs <- many (oneOf (['_'] ++ ['-'] ++ ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9']))
+    let tok = (v:vs)
+    case tok of
+        "eax" -> retReg L2EAX
+        "ecx" -> retReg L2ECX
+        "edx" -> retReg L2EDX
+        "ebx" -> retReg L2EBX
+        "esi" -> retReg L2ESI
+        "edi" -> retReg L2EDI
+        "ebp" -> retReg L2EBP
+        "esp" -> retReg L2ESP
+        otherwise -> case reads tok :: [(Int,String)] of
+                         [(n,"")] -> return $ L2Tnum n
+                         otherwise -> return . L2TX . L2Xvar . L2Var $ tok
+    where
+        retReg = return . L2TX . L2Xreg
 
 parseArith :: L2X -> L2AOP -> Parser L2Instruction
 parseArith x aop = do
