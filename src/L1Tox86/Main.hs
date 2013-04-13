@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
-module L1ToX86.Main where
+module Main where
 
 import Control.Monad
 import Control.Monad.State
