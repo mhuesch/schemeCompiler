@@ -3,8 +3,8 @@ import unittest
 import glob
 
 def runTestcase(self, input_file, result_file):
-    spillProg = subprocess.Popen(['./spill', input_file],stdout=subprocess.PIPE)
-    idProg = subprocess.Popen(['./id', result_file],stdout=subprocess.PIPE)
+    spillProg = subprocess.Popen(['runghc', '-i../../src', 'Main.hs', input_file],stdout=subprocess.PIPE)
+    idProg = subprocess.Popen(['runghc', '-i../../src', 'Id.hs', result_file],stdout=subprocess.PIPE)
     with open(result_file) as results:
         self.assertEqual(spillProg.stdout.read(), idProg.stdout.read())
 
