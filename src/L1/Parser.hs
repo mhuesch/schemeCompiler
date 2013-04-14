@@ -73,7 +73,6 @@ whitespaceOrComment = do
 skipComment :: Parser ()
 skipComment = do
     char ';'
-    char ';'
     skipMany (noneOf "\n")
     char '\n'
     whitespaceOrComment
