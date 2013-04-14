@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import Control.Monad
@@ -20,27 +19,23 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
-    assembleFile (args !! 0)
-
-
-assembleFile :: FilePath -> IO ()
-assembleFile fp = do
     runtimeOExists <- doesFileExist "runtime.o"
     when (not runtimeOExists) $ putStrLn "No runtime.o. Exiting."
-    contents <- readFile fp
+    contents <- readFile (args !! 0)
     let filename = "prog.S"
-        (prog, _) = runState (generateAssembly contents) 0
+        prog = generateAssembly contents
     writeFile filename prog
     rawSystem "as" ["--32", "-o", "prog.o", "prog.S"]
     rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "runtime.o"]
     return ()
 
 
+generateAssembly :: String -> String
+generateAssembly input = res
+    where (res, _) = runState (assembleProgram . readProg $ input) 0
 
-generateAssembly :: MonadState Int m => String -> m String
-generateAssembly = assembleProgram . readProg
 
-assembleProgram :: MonadState Int m => Program -> m String
+assembleProgram :: Program -> State Int String
 assembleProgram (Program mainBody funs) = do
     mainAssem <- liftM concat $ mapM assembleInstruction mainBody
     funAssem <- liftM concat $ mapM assembleFunction funs
@@ -51,14 +46,14 @@ assembleProgram (Program mainBody funs) = do
           ++ funAssem
           ++ fileFooter
 
-assembleFunction :: MonadState Int m => Function -> m String
+assembleFunction :: Function -> State Int String
 assembleFunction (Function label body) = do
     bodyAssem <- liftM concat $ mapM assembleInstruction body
     return $ funLabel ++ bodyAssem
     where
         funLabel = (colonLabel label) ++ "\n"
 
-assembleInstruction :: MonadState Int m => Instruction -> m String
+assembleInstruction :: Instruction -> State Int String
 assembleInstruction (Assign r s) = return $ "movl " ++ assembleS s ++ ", " ++ assembleReg r ++ "\n"
 assembleInstruction (ReadMem r1 r2 n) = return $ "movl " ++ show n ++ "(" ++ assembleReg r2 ++ "), " ++ assembleReg r1 ++ "\n"
 assembleInstruction (Update r n s) = return $ "movl " ++ assembleS s ++ ", " ++ show n ++ "(" ++ assembleReg r ++ ")\n"
