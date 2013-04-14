@@ -59,12 +59,13 @@ parseMain = do
     char '('
     whitespaceOrComment
     ls <- parseInstructions
+    whitespaceOrComment
     char ')'
     return ls
 
 parseFunctions :: Parser [L2Function]
 parseFunctions = do
-    fs <- sepEndBy parseFunction whitespaceOrComment
+    fs <- sepBy parseFunction whitespaceOrComment
     return fs
 
 parseFunction :: Parser L2Function
@@ -73,6 +74,7 @@ parseFunction = do
     name <- parseLabel
     whitespaceOrComment
     ls <- parseInstructions
+    whitespaceOrComment
     char ')'
     return $ L2Function name ls
 
@@ -107,7 +109,7 @@ parseInstruction = (liftM L2ILab parseLabel) <|> do
          <|> (try parseGoto)
          <|> parseUpdate
          <|> parseRegOp
-    spaces
+    whitespaceOrComment
     char ')'
     return instr
 
@@ -115,28 +117,28 @@ parseInstruction = (liftM L2ILab parseLabel) <|> do
 parseCall :: Parser L2Instruction
 parseCall = do
     string "call"
-    spaces1
+    whitespaceOrComment
     (liftM L2Call parseU)
 
 parseCjump :: Parser L2Instruction
 parseCjump = do
     string "cjump"
-    spaces1
+    whitespaceOrComment
     t1 <- parseT
-    spaces1
+    whitespaceOrComment
     cmp <- parseCMP
-    spaces1
+    whitespaceOrComment
     t2 <- parseT
-    spaces1
+    whitespaceOrComment
     l1 <- parseLabel
-    spaces1
+    whitespaceOrComment
     l2 <- parseLabel
     return $ L2Cjump t1 cmp t2 l1 l2
 
 parseTailCall :: Parser L2Instruction
 parseTailCall = do
     string "tail-call"
-    spaces1
+    whitespaceOrComment
     (liftM L2TailCall parseU)
 
 parseReturn :: Parser L2Instruction
@@ -147,29 +149,29 @@ parseReturn = do
 parseGoto :: Parser L2Instruction
 parseGoto = do
     string "goto"
-    spaces1
+    whitespaceOrComment
     (liftM L2Goto parseLabel)
 
 parseUpdate :: Parser L2Instruction
 parseUpdate = do
     string "(mem"
-    spaces1
+    whitespaceOrComment
     x <- parseX
-    spaces1
+    whitespaceOrComment
     n <- parseNumber
     char ')'
-    spaces1
+    whitespaceOrComment
     string "<-"
-    spaces1
+    whitespaceOrComment
     s <- parseS
     return $ L2Update x n s
 
 parseRegOp :: Parser L2Instruction
 parseRegOp = do
     x <- parseX
-    spaces1
+    whitespaceOrComment
     op <- many1 (noneOf " ")
-    spaces1
+    whitespaceOrComment
     case op of
         "<-" -> parseArrow x
         "+=" -> parseArith x L2Add
@@ -188,7 +190,7 @@ parseArrowParen :: L2X -> Parser L2Instruction
 parseArrowParen x = do
     char '('
     tok <- many1 (oneOf (['a'..'z'] ++ ['-']))
-    spaces1
+    whitespaceOrComment
     case tok of
         "print" -> do
             t <- parseT
@@ -197,32 +199,32 @@ parseArrowParen x = do
             return $ L2Print x t
         "allocate" -> do
             t1 <- parseT
-            spaces1
+            whitespaceOrComment
             t2 <- parseT
-            spaces
+            whitespaceOrComment
             char ')'
             return $ L2Allocate x t1 t2
         "array-error" -> do
             t1 <- parseT
-            spaces1
+            whitespaceOrComment
             t2 <- parseT
-            spaces
+            whitespaceOrComment
             char ')'
             return $ L2ArrayError x t1 t2
         "mem" -> do
             x2 <- parseX
-            spaces1
+            whitespaceOrComment
             n <- parseNumber
-            spaces
+            whitespaceOrComment
             char ')'
             return $ L2ReadMem x x2 n
 
 parseSaveCmp :: L2X -> Parser L2Instruction
 parseSaveCmp x = do
     t1 <- parseT
-    spaces1
+    whitespaceOrComment
     cmp <- parseCMP
-    spaces1
+    whitespaceOrComment
     t2 <- parseT
     return $ L2SaveCmp x t1 cmp t2
 
