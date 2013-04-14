@@ -5,8 +5,10 @@ prog.S
 *.o
 *.S
 
-L1c
 a.out
+L1c
+spill
+
 
 322-interps/tests*
 

@@ -32,7 +32,7 @@ assembleFile fp = do
         (prog, _) = runState (generateAssembly contents) 0
     writeFile filename prog
     rawSystem "as" ["--32", "-o", "prog.o", "prog.S"]
-    rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "../../static/runtime.o"]
+    rawSystem "gcc" ["-m32", "-o", "a.out", "prog.o", "runtime.o"]
     return ()
 
 
