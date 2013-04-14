@@ -25,7 +25,7 @@ main = do
 
 assembleFile :: FilePath -> IO ()
 assembleFile fp = do
-    runtimeOExists <- doesFileExist "../../static/runtime.o"
+    runtimeOExists <- doesFileExist "runtime.o"
     when (not runtimeOExists) $ putStrLn "No runtime.o. Exiting."
     contents <- readFile fp
     let filename = "prog.S"
