@@ -15,7 +15,9 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
-    result <- parseFromFile parseMain (args !! 0)
+    result <- parseFromFile safeMain (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
         Right sp -> putStrLn . displayInstrList $ sp
+
+safeMain = whitespaceOrComment >> parseMain
