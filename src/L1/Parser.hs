@@ -1,5 +1,6 @@
 module L1.Parser
 ( readProg
+, parseProg
 ) where
 
 import Control.Monad (liftM)
@@ -47,6 +48,7 @@ parseFunctions = do
 parseFunction :: Parser Function
 parseFunction = do
     char '('
+    whitespaceOrComment    
     name <- parseLabel
     whitespaceOrComment
     ls <- parseInstructions
