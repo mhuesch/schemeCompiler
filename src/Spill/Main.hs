@@ -233,53 +233,53 @@ spillInstruction i@(L2TailCall u) = do
 
 spillInstruction i@(L2Return) = return [i]
 
-spillInstruction i@(L2Print x t) = do
+spillInstruction i@(L2Print t) = do
     (var,varOffset,prefix) <- ask
     case (t == L2TX (L2Xvar var)) of
         True -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Print x (L2TX (L2Xvar newVar)))
+                   ,(L2Print (L2TX (L2Xvar newVar)))
                    ]
         False -> return [i]
         
-spillInstruction i@(L2Allocate x t1 t2) = do
+spillInstruction i@(L2Allocate t1 t2) = do
     (var,varOffset,prefix) <- ask
     case ((t1 == L2TX (L2Xvar var)),(t2 == L2TX (L2Xvar var))) of
         (True,True) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate x (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
+                   ,(L2Allocate (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
                    ]
         (True,False) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate x (L2TX (L2Xvar newVar)) t2)
+                   ,(L2Allocate (L2TX (L2Xvar newVar)) t2)
                    ]
         (False,True) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate x t1 (L2TX (L2Xvar newVar)))
+                   ,(L2Allocate t1 (L2TX (L2Xvar newVar)))
                    ]
         (False,False) -> return [i]
 
-spillInstruction i@(L2ArrayError x t1 t2) = do
+spillInstruction i@(L2ArrayError t1 t2) = do
     (var,varOffset,prefix) <- ask
     case ((t1 == L2TX (L2Xvar var)),(t2 == L2TX (L2Xvar var))) of
         (True,True) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError x (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
+                   ,(L2ArrayError (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
                    ]
         (True,False) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError x (L2TX (L2Xvar newVar)) t2)
+                   ,(L2ArrayError (L2TX (L2Xvar newVar)) t2)
                    ]
         (False,True) -> do
             newVar <- genVar prefix
             return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError x t1 (L2TX (L2Xvar newVar)))
+                   ,(L2ArrayError t1 (L2TX (L2Xvar newVar)))
                    ]
         (False,False) -> return [i]
 

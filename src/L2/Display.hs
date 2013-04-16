@@ -34,9 +34,9 @@ displayInstruction (L2Cjump t1 cmp t2 l1 l2) = "(cjump " ++ displayT t1 ++ " " +
 displayInstruction (L2Call u) = "(call " ++ displayU u ++ ")"
 displayInstruction (L2TailCall u) = "(tail-call " ++ displayU u ++ ")"
 displayInstruction (L2Return) = "(return)"
-displayInstruction (L2Print x t) = "(" ++ displayX x ++ " <- (print " ++ displayT t ++ "))"
-displayInstruction (L2Allocate x t1 t2) = "(" ++ displayX x ++ " <- (allocate " ++ displayT t1 ++ " " ++ displayT t2 ++ "))"
-displayInstruction (L2ArrayError x t1 t2) = "(" ++ displayX x ++ " <- (array-error " ++ displayT t1 ++ " " ++ displayT t2 ++ "))"
+displayInstruction (L2Print t) = "(eax" ++ " <- (print " ++ displayT t ++ "))"
+displayInstruction (L2Allocate t1 t2) = "(eax" ++ " <- (allocate " ++ displayT t1 ++ " " ++ displayT t2 ++ "))"
+displayInstruction (L2ArrayError t1 t2) = "(eax" ++ " <- (array-error " ++ displayT t1 ++ " " ++ displayT t2 ++ "))"
 
 displayX :: L2X -> String
 displayX (L2Xreg r) = displayReg r

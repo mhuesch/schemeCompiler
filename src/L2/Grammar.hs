@@ -26,9 +26,9 @@ data L2Instruction = L2Assign L2X L2S
                    | L2Call L2U
                    | L2TailCall L2U
                    | L2Return
-                   | L2Print L2X L2T
-                   | L2Allocate L2X L2T L2T
-                   | L2ArrayError L2X L2T L2T
+                   | L2Print L2T
+                   | L2Allocate L2T L2T
+                   | L2ArrayError L2T L2T
                    deriving (Show, Eq)
 
 
@@ -106,9 +106,9 @@ instance Arbitrary L2Instruction where
                       ,L2Call <$> arbitrary
                       ,L2TailCall <$> arbitrary
                       ,return L2Return
-                      ,L2Print <$> arbitrary <*> arbitrary
-                      ,L2Allocate <$> arbitrary <*> arbitrary <*> arbitrary
-                      ,L2ArrayError <$> arbitrary <*> arbitrary <*> arbitrary
+                      ,L2Print <$> arbitrary
+                      ,L2Allocate <$> arbitrary <*> arbitrary
+                      ,L2ArrayError <$> arbitrary <*> arbitrary
                       ]
 
 instance Arbitrary L2S where

@@ -196,21 +196,21 @@ parseArrowParen x = do
             t <- parseT
             spaces
             char ')'
-            return $ L2Print x t
+            return $ L2Print t
         "allocate" -> do
             t1 <- parseT
             whitespaceOrComment
             t2 <- parseT
             whitespaceOrComment
             char ')'
-            return $ L2Allocate x t1 t2
+            return $ L2Allocate t1 t2
         "array-error" -> do
             t1 <- parseT
             whitespaceOrComment
             t2 <- parseT
             whitespaceOrComment
             char ')'
-            return $ L2ArrayError x t1 t2
+            return $ L2ArrayError t1 t2
         "mem" -> do
             x2 <- parseX
             whitespaceOrComment
