@@ -102,6 +102,7 @@ skipComment = do
 parseInstruction :: Parser L2Instruction
 parseInstruction = (liftM L2ILab parseLabel) <|> do
     char '('
+    whitespaceOrComment
     instr <- (try parseCall)
          <|> (try parseCjump)
          <|> (try parseTailCall)
