@@ -114,11 +114,11 @@ assembleInstruction (Cjump (Tnum n1) Equal (Tnum n2) l1 l2) = return $ "jmp " ++
 
 assembleInstruction (ILab label) = return $ colonLabel label ++ "\n"
 assembleInstruction (Goto label) = return $ "jmp " ++ underscoreLabel label ++ "\n"
-assembleInstruction (Tail_Call u) = return $ "movl %ebp, %esp\n    jmp " ++ assembleU u ++ "\n"
+assembleInstruction (TailCall u) = return $ "movl %ebp, %esp\n    jmp " ++ assembleU u ++ "\n"
 assembleInstruction (Return) = return $ "movl %ebp, %esp\n    pop %ebp\n    ret\n"
-assembleInstruction (Print r t) = return $ "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
-assembleInstruction (Allocate r t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall allocate\n" ++ "addl $8,%esp\n"
-assembleInstruction (Array_Error r t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall print_error\n" ++ "addl $8,%esp\n"
+assembleInstruction (Print t) = return $ "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
+assembleInstruction (Allocate t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall allocate\n" ++ "addl $8,%esp\n"
+assembleInstruction (ArrayError t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall print_error\n" ++ "addl $8,%esp\n"
 
 reg8Bit :: Reg -> String
 reg8Bit (EAX) = "%al"

@@ -18,11 +18,11 @@ data Instruction = Assign Reg S
                  | Goto Label
                  | Cjump T CMP T Label Label
                  | Call U
-                 | Tail_Call U
+                 | TailCall U
                  | Return
-                 | Print Reg T
-                 | Allocate Reg T T
-                 | Array_Error Reg T T
+                 | Print T
+                 | Allocate T T
+                 | ArrayError T T
                  deriving (Show)
 
 

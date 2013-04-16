@@ -108,7 +108,7 @@ parseTailCall :: Parser Instruction
 parseTailCall = do
     string "tail-call"
     spaces1
-    (liftM Tail_Call parseU)
+    (liftM TailCall parseU)
 
 parseReturn :: Parser Instruction
 parseReturn = do
@@ -180,21 +180,21 @@ parseArrowParen reg = do
             t <- parseT
             spaces
             char ')'
-            return $ Print reg t
+            return $ Print t
         "allocate" -> do
             t1 <- parseT
             spaces1
             t2 <- parseT
             spaces
             char ')'
-            return $ Allocate reg t1 t2
+            return $ Allocate t1 t2
         "array-error" -> do
             t1 <- parseT
             spaces1
             t2 <- parseT
             spaces
             char ')'
-            return $ Array_Error reg t1 t2
+            return $ ArrayError t1 t2
         "mem" -> do
             r2 <- parseReg
             spaces1
