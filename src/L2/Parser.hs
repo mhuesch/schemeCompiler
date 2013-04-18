@@ -11,6 +11,13 @@ import L2.Grammar
 spaces1 :: Parser ()
 spaces1 = skipMany1 space
 
+{- Liveness parser -}
+parseLiveness :: Parser [L2Instruction]
+parseLiveness = do
+    whitespaceOrComment
+    m <- parseMain
+    return m
+
 {- Spill parsers -}
 parseSpill :: Parser L2Spill
 parseSpill = do

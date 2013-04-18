@@ -7,7 +7,8 @@ prog.S
 
 a.out
 L1c
-spill
+*/Spill/spill
+*/Liveness/liveness
 
 
 322-interps/tests*
