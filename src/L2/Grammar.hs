@@ -47,7 +47,7 @@ data L2T = L2TX L2X
 
 data L2X = L2Xreg L2Reg
          | L2Xvar L2Var
-         deriving (Show, Eq)
+         deriving (Show, Eq, Ord)
 
 {- Registers -}
 data L2Reg = L2ESI
@@ -58,11 +58,11 @@ data L2Reg = L2ESI
            | L2EBX
            | L2EAX
            | L2ECX
-         deriving (Show, Eq)
+         deriving (Show, Eq, Ord)
 
 {- Variables -}
 data L2Var = L2Var String
-           deriving (Show, Eq)
+           deriving (Show, Eq, Ord)
 
 {- Operators -}
 data L2AOP = L2Add
