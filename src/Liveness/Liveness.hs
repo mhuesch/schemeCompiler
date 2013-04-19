@@ -67,7 +67,9 @@ x86CallerSaveRegX = map L2Xreg [L2EAX, L2EBX, L2ECX]
 gen :: L2Instruction -> S.Set L2X
 gen (L2Assign _ (L2SX x)) = liveSet [x]
 gen (L2ReadMem _ x _) = liveSet [x]
-gen (L2Update _ _ (L2SX x)) = liveSet [x]
+gen (L2Update x1 _ s) = case s of
+    (L2SX x2) -> liveSet [x1,x2]
+    _ -> liveSet [x1]
 gen (L2Arith x1 _ (L2TX x2)) = liveSet [x1,x2]
 gen (L2ShiftSX x1 _ x2) = liveSet [x1,x2]
 gen (L2ShiftNum x _ _) = liveSet [x]
