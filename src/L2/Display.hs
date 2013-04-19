@@ -1,9 +1,13 @@
 module L2.Display where
 
-import Data.List (intersperse)
+import Data.List (intersperse, sort)
 
 import L2.Grammar
 
+{- Liveness display variable list -}
+displayXList :: [L2X] -> String
+displayXList xs = "(" ++ (concat . intersperse " " . sort $ map displayX xs) ++ ")"
+{--------}
 
 displayProgram :: L2Program -> String
 displayProgram (L2Program is fs) = "(" ++ displayInstrList is ++ displayFunctions fs ++ ")"
