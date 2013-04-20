@@ -7,6 +7,7 @@ import Data.Array
 import qualified Data.Set as S
 
 import L2.Grammar
+import L2.Display
 
 
 
@@ -14,7 +15,7 @@ data LiveSlot = LiveSlot { instr :: L2Instruction
                          , inSet :: S.Set L2X
                          , outSet :: S.Set L2X
                          , succIdxs :: [Int]
-                         } deriving (Show)
+                         } deriving (Show, Eq)
 
 type LiveArray = Array Int LiveSlot
 
@@ -27,10 +28,10 @@ liveListToArray ls = array (0,len-1) $ zip [0..] slots
         slots = map (makeSlot ls) [0..len-1]
 
 makeSlot :: [L2Instruction] -> Int -> LiveSlot
-makeSlot ls index = LiveSlot (ls !! index) S.empty S.empty (successors ls index)
+makeSlot ls index = LiveSlot (ls !! index) S.empty S.empty (findSuccessors ls index)
 
-successors :: [L2Instruction] -> Int -> [Int]
-successors ls index = case (ls !! index) of
+findSuccessors :: [L2Instruction] -> Int -> [Int]
+findSuccessors ls index = case (ls !! index) of
     (L2Goto label) -> catMaybes [elemIndex (L2ILab label) ls]
     (L2Cjump _ _ _ label1 label2) -> catMaybes [elemIndex (L2ILab label1) ls
                                                ,elemIndex (L2ILab label2) ls
@@ -111,6 +112,49 @@ kill (L2Print _) = liveSet x86CallerSaveRegX
 kill (L2Allocate _ _) = liveSet x86CallerSaveRegX
 kill (L2ArrayError _ _) = liveSet x86CallerSaveRegX
 kill _ = liveSet []
+
+
+
+
+inStep :: LiveSlot -> LiveSlot
+inStep slot@(LiveSlot instruction iS oS _) = slot { inSet = newInSet }
+    where
+        genSet = gen instruction
+        killSet = kill instruction
+        newInSet = S.union genSet $ S.difference oS killSet
+
+outStep :: LiveArray -> Int -> LiveSlot
+outStep arr idx = slot { outSet = inSetUnion }
+    where
+        slot@(LiveSlot _ _ oS succs) = arr ! idx
+        successorInSets = map (inSet . (arr !)) succs
+        inSetUnion = foldl (S.union) oS successorInSets
+
+
+slotStep :: LiveArray -> Int -> LiveSlot
+slotStep arr idx = inStep $ outStep arr idx
+
+
+arrayStep :: LiveArray -> LiveArray
+arrayStep arr = arr // (map (\ i -> (i,(slotStep arr i))) (indices arr))
+
+convergeLiveArray :: LiveArray -> LiveArray
+convergeLiveArray arr = if next == arr
+                           then arr
+                           else convergeLiveArray next
+    where
+        next = arrayStep arr
+
+
+displayLiveArray :: LiveArray -> String
+displayLiveArray arr = "((in\n" ++ (concat $ intersperse "\n" inLists)
+                                ++ ")\n"
+                                ++ "(out\n"
+                                ++ (concat $ intersperse "\n" outLists)
+                                ++ "))"
+    where
+        inLists = map (displayXList . S.toList . inSet) $ elems arr
+        outLists = map (displayXList . S.toList . outSet) $ elems arr
 
 
 
