@@ -36,6 +36,9 @@ findSuccessors ls index = case (ls !! index) of
     (L2Cjump _ _ _ label1 label2) -> catMaybes [elemIndex (L2ILab label1) ls
                                                ,elemIndex (L2ILab label2) ls
                                                ]
+    (L2ArrayError _ _) -> []
+    (L2Return) -> []
+    (L2TailCall _) -> []
     otherwise -> if (index + 1) >= length ls
                     then []
                     else [index + 1]
@@ -73,10 +76,7 @@ gen (L2ShiftSX x1 _ x2) = liveSet [x1,x2]
 gen (L2ShiftNum x _ _) = liveSet [x]
 gen (L2SaveCmp _ t1 _ t2) = extractXs t1 t2
 gen (L2Cjump t1 _ t2 _ _) = extractXs t1 t2
-gen (L2Call (L2UX x)) = liveSet $ [x] ++ argRegX
-gen (L2TailCall (L2UX x)) = liveSet $ [x] ++ argRegX ++ calleeSaveRegX
 gen (L2Return) = liveSet $ resultRegX ++ calleeSaveRegX
-gen (L2Print (L2TX x)) = liveSet [x]
 gen (L2Allocate t1 t2) = extractXs t1 t2
 gen (L2ArrayError t1 t2) = extractXs t1 t2
 
@@ -86,7 +86,17 @@ gen (L2Update x1 _ s) = case s of
 
 gen (L2Arith x1 _ t) = case t of
     (L2TX x2) -> liveSet [x1,x2]
-    _ -> liveSet []
+    _ -> liveSet [x1]
+
+gen (L2Call u) = case u of
+    (L2UX x) -> liveSet $ [x] ++ argRegX
+    _ -> liveSet argRegX
+
+gen (L2TailCall u) = case u of
+    (L2UX x) -> liveSet $ [x] ++ argRegX ++ calleeSaveRegX
+    _ -> liveSet $ argRegX ++ calleeSaveRegX
+
+gen (L2Print (L2TX x)) = liveSet [x]
 
 gen _ = liveSet []
 

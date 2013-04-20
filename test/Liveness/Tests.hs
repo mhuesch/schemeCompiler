@@ -46,6 +46,9 @@ testGen = TestList [genStringTest "(var)" "(eax <- var)"
                    ,genStringTest "(a ecx)" "(a <<= ecx)"
                    ,genStringTest "(a b)" "(q <- a < b)"
                    ,genStringTest "(f)" "(cjump f = 0 :a :b)"
+                   ,genStringTest "(eax ecx edx)" "(call :f)"
+                   ,genStringTest "(eax ecx edx z)" "(call z)"
+                   ,genStringTest "(esi)" "(esi *= 2)"
                    ]
 
 
@@ -68,6 +71,7 @@ testKill = TestList [killStringTest "()" ":f"
                     ,killStringTest "(eax ecx edx)" "(eax <- (print a))"
                     ,killStringTest "(eax ecx edx)" "(eax <- (allocate a 9))"
                     ,killStringTest "(eax ecx edx)" "(eax <- (array-error a q))"
+                    ,killStringTest "(esi)" "(esi <- 20)"
                     ]
 
 
