@@ -178,7 +178,7 @@ parseRegOp :: Parser L2Instruction
 parseRegOp = do
     x <- parseX
     whitespaceOrComment
-    op <- many1 (noneOf " ;")
+    op <- many1 (noneOf " ;)(")
     whitespaceOrComment
     case op of
         "<-" -> parseArrow x
