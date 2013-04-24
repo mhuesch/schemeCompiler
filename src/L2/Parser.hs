@@ -174,11 +174,14 @@ parseUpdate = do
     s <- parseS
     return $ L2Update x n s
 
+
+regOpChars = oneOf "<>=-+*&"
+
 parseRegOp :: Parser L2Instruction
 parseRegOp = do
     x <- parseX
     whitespaceOrComment
-    op <- many1 (noneOf " ;)(")
+    op <- many1 regOpChars
     whitespaceOrComment
     case op of
         "<-" -> parseArrow x
