@@ -18,7 +18,7 @@ main = do
     when (length args == 0) $ do
         putStrLn "usage: filename"
         exitFailure
-    result <- parseFromFile parseLiveness (args !! 0)
+    result <- parseFromFile parseFunBody (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
         Right ls -> putStrLn . displayLiveArray . convergeLiveArray . liveListToArray $ ls
