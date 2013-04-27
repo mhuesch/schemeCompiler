@@ -6,6 +6,7 @@ import Data.Maybe
 import Data.Array
 import qualified Data.Set as S
 
+import Glue
 import L2.Grammar
 import L2.Display
 
@@ -23,14 +24,17 @@ type LiveArray = Array Int LiveSlot
 liveness :: [L2Instruction] -> LiveArray
 liveness = convergeLiveArray . liveListToArray
 
-livenessLists :: [L2Instruction] -> [(L2Instruction,[L2X])]
-livenessLists ls = case bounds arr of
-    (0,0) -> []
-    _ -> (firstIn:allOuts)
+liveRes :: [L2Instruction] -> LivenessResult
+liveRes ls = LivenessResult xs infos
     where
         arr = liveness ls
-        firstIn = (\ slot -> (instr slot, S.toList $ inSet slot)) $ arr ! 0
-        allOuts = map (\ slot -> (instr slot, S.toList $ outSet slot)) $ elems arr
+        xs = S.toList $ foldl (S.union) S.empty . concat . map (\e -> [inSet e, kill $ instr e]) $ elems arr
+        infos = case bounds arr of
+            (0,-1) -> []
+            _ -> (firstIn:allOuts)
+        filterKills slot = S.filter isLive . kill $ instr slot
+        firstIn = (\ slot -> InstructionInfo (instr slot) (S.toList $ inSet slot)) $ arr ! 0
+        allOuts = map (\ slot -> InstructionInfo (instr slot) (S.toList $ S.union (filterKills slot) (outSet slot))) $ elems arr
 
 
 {- Convert function to LiveArray -}

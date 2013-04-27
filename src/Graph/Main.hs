@@ -23,7 +23,7 @@ main = do
     case result of
         Left err -> putStrLn . show $ err
         Right ls -> do
-            let iG = buildInterference . livenessLists $ ls
+            let iG = buildInterference . liveRes $ ls
                 -- Do coloring
             putStrLn . displayIGraph $ iG
             putStrLn "#f"
