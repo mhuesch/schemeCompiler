@@ -9,6 +9,7 @@ a.out
 L1c
 */Spill/spill
 */Liveness/liveness
+*/Graph/graph
 
 
 322-interps/tests*
