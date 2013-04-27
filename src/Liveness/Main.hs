@@ -21,6 +21,6 @@ main = do
     result <- parseFromFile parseFunBody (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
-        Right ls -> putStrLn . displayLiveArray . convergeLiveArray . liveListToArray $ ls
+        Right ls -> putStrLn . displayLiveArray . liveness $ ls
 
 

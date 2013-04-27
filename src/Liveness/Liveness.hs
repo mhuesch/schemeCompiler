@@ -19,6 +19,19 @@ data LiveSlot = LiveSlot { instr :: L2Instruction
 
 type LiveArray = Array Int LiveSlot
 
+{- Liveness function -}
+liveness :: [L2Instruction] -> LiveArray
+liveness = convergeLiveArray . liveListToArray
+
+livenessLists :: [L2Instruction] -> [(L2Instruction,[L2X])]
+livenessLists ls = case bounds arr of
+    (0,0) -> []
+    _ -> (firstIn:allOuts)
+    where
+        arr = liveness ls
+        firstIn = (\ slot -> (instr slot, S.toList $ inSet slot)) $ arr ! 0
+        allOuts = map (\ slot -> (instr slot, S.toList $ outSet slot)) $ elems arr
+
 
 {- Convert function to LiveArray -}
 liveListToArray :: [L2Instruction] -> LiveArray
