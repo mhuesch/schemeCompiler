@@ -29,6 +29,28 @@ insertWithEdge f k1 k2 v g = case M.lookup k1 g of
     (Just _) -> M.adjust (M.insertWith f k2 v) k1 g
 
 
+{- Combines two nodes by deleting the second key and adding its submap to the first -}
+{- Doesn't combine if node size will exceed given int -}
+combineNodesSize :: Ord k => k -> k -> Int -> Graph k a -> Graph k a
+combineNodesSize k1 k2 n g = case (M.lookup k1 g, M.lookup k2 g) of
+    (Just m1, Just m2) -> let combined = M.delete k1 . M.delete k2 $ M.union m1 m2
+                          in if M.size combined < n
+                                then M.insert k1 combined . M.delete k2 . modifyNeighbors k2 k1 $ g
+                                else g
+    _ -> g
+
+
+modifyNeighbors :: Ord k => k -> k -> Graph k a -> Graph k a
+modifyNeighbors kOld kNew g = M.map (switchKey kOld kNew) g
+    where
+        switchKey k0 k1 m = case M.lookup k0 m of
+            Nothing -> m
+            (Just v) -> M.insert k1 v . M.delete k0 $ m
+
+
+
+
+
 fillEmpty :: Ord k => k -> Graph k a -> Graph k a
 fillEmpty k1 = M.alter f k1
     where
