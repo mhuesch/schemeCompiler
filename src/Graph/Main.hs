@@ -11,6 +11,7 @@ import L2.Parser
 import L2.Display
 import Liveness.Liveness
 import Graph.Interference
+import Graph.Color
 
 
 main :: IO ()
@@ -26,6 +27,7 @@ main = do
             let iG = buildInterference . liveRes $ ls
                 -- Do coloring
             putStrLn . displayIGraph $ iG
-            putStrLn "#f"
+            putStrLn . displayColors . colorGraph $ iG
+            --putStrLn "#f"
 
 

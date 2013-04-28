@@ -36,6 +36,8 @@ fillEmpty k1 = M.alter f k1
         f Nothing = (Just M.empty)
 
 
+keys :: Graph k a -> [k]
+keys = M.keys
 
 fromAdj :: Ord k => [(k,[(k,a)])] -> Graph k a
 fromAdj = M.fromList . map makeMap

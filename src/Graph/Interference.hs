@@ -7,13 +7,7 @@ import Glue
 import L2.Grammar
 import L2.Display
 import Graph.Graph
-
-
-data EdgeType = MoveEdge
-              | FixedEdge
-              deriving (Show, Eq)
-
-type IGraph = Graph L2X EdgeType
+import Graph.GraphGlue
 
 
 regs = map L2Xreg [L2EAX, L2EBX, L2ECX, L2EDI, L2EDX, L2ESI]
