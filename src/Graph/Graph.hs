@@ -36,6 +36,14 @@ fillEmpty k1 = M.alter f k1
         f Nothing = (Just M.empty)
 
 
+filterNeighbors :: (Ord k, Eq a) => k -> a -> Graph k a -> [k]
+filterNeighbors k a g = map fst $ filter ((== a) . snd) neighborAssocs
+    where
+        neighborAssocs = case M.lookup k g of
+            Nothing -> []
+            (Just m) -> M.toList m
+
+
 keys :: Graph k a -> [k]
 keys = M.keys
 

@@ -27,7 +27,6 @@ main = do
             let iG = buildInterference . liveRes $ ls
                 -- Do coloring
             putStrLn . displayIGraph $ iG
-            putStrLn . displayColors . colorGraph $ iG
-            --putStrLn "#f"
+            putStrLn . displayColors . runColor $ iG
 
 

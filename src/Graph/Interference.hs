@@ -34,8 +34,6 @@ instrInterfere g iInfo = foldl addMove' (foldl addFixed' g fs) ms
 
 
 
-
-
 makeEdgePairs :: InstructionInfo -> ([(L2X,L2X)],[(L2X,L2X)])
 makeEdgePairs (InstructionInfo i interferers) = case i of
     (L2Assign x1 (L2SX x2)) -> let movePerms = perms . onlyLive $ [x1,x2]
@@ -48,19 +46,8 @@ makeEdgePairs (InstructionInfo i interferers) = case i of
         regInterference x = concat . map (\ k -> [(x,k),(k,x)]) . map L2Xreg
 
 
+perms :: (Eq a) => [a] -> [(a,a)]
 perms xs = [(x1,x2) | x1 <- xs, x2 <- xs, x1 /= x2]
-
-
-{-
-instructionInterference :: L2Instruction -> ([(L2X,L2X)],[(L2X,L2X)])
-instructionInterference (L2Assign x1 (L2SX x2)) = (onlyLive [x1,x2],[])
-instructionInterference L2SaveCmp{} = ([],map L2Xreg [L2ESI, L2EDI])
-instructionInterference L2ShiftSX{} = ([],map L2Xreg [L2EAX,L2EBX,L2EDI,L2EDX,L2ESI])
-instructionInterference _ = ([],[])
--}
-
-
-
 
 onlyLive :: [L2X] -> [L2X]
 onlyLive = filter isLive
@@ -69,11 +56,6 @@ isLive :: L2X -> Bool
 isLive (L2Xreg L2EBP) = False
 isLive (L2Xreg L2ESP) = False
 isLive _ = True
-
-
-
-
-
 
 
 
