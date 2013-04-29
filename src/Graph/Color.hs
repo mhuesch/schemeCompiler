@@ -40,10 +40,15 @@ fillReplacedColors colors ((v,x):ls) = case lookup x colors of
 
 replaceMove :: ([(L2Var,L2X)],IGraph) -> (L2X,L2X) -> ([(L2Var,L2X)],IGraph)
 replaceMove (replaced,g) pair = case pair of
-    (x1@(L2Xvar v1), x2@(L2Xvar v2)) -> ((v2,x1):replaced, combineNodesSize x1 x2 6 g)
-    (x1@(L2Xvar v), x2@(L2Xreg r)) -> ((v,x2):replaced, combineNodesSize x2 x1 6 g)
-    (x1@(L2Xreg r), x2@(L2Xvar v)) -> ((v,x1):replaced, combineNodesSize x1 x2 6 g)
+    (x1@(L2Xvar v1), x2@(L2Xvar v2)) -> handleCombination replaced v2 x1 g
+    (x1@(L2Xvar v), x2@(L2Xreg _)) -> handleCombination replaced v x2 g
+    (x1@(L2Xreg _), x2@(L2Xvar v)) -> handleCombination replaced v x1 g
     (L2Xreg _,L2Xreg _) -> (replaced,g)
+
+handleCombination :: [(L2Var,L2X)] -> L2Var -> L2X -> IGraph -> ([(L2Var,L2X)],IGraph)
+handleCombination replaced v x g = case combineNodesSize x (L2Xvar v) 6 g of
+    Nothing -> (replaced,g)
+    (Just newG) -> ((v,x):replaced,newG)
 
 
 

@@ -31,13 +31,13 @@ insertWithEdge f k1 k2 v g = case M.lookup k1 g of
 
 {- Combines two nodes by deleting the second key and adding its submap to the first -}
 {- Doesn't combine if node size will exceed given int -}
-combineNodesSize :: Ord k => k -> k -> Int -> Graph k a -> Graph k a
+combineNodesSize :: Ord k => k -> k -> Int -> Graph k a -> Maybe (Graph k a)
 combineNodesSize k1 k2 n g = case (M.lookup k1 g, M.lookup k2 g) of
     (Just m1, Just m2) -> let combined = M.delete k1 . M.delete k2 $ M.union m1 m2
                           in if M.size combined < n
-                                then M.insert k1 combined . M.delete k2 . modifyNeighbors k2 k1 $ g
-                                else g
-    _ -> g
+                                then Just $ M.insert k1 combined . M.delete k2 . modifyNeighbors k2 k1 $ g
+                                else Nothing
+    _ -> Nothing
 
 
 modifyNeighbors :: Ord k => k -> k -> Graph k a -> Graph k a
