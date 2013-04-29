@@ -14,7 +14,7 @@ import Graph.Graph
 import Graph.GraphGlue
 
 
-
+{- Coloring monad -}
 type Coloring = [(L2X,L2Reg)]
 
 type RMI a = ReaderT IGraph (MaybeT Identity) a
@@ -23,16 +23,19 @@ runRMI :: IGraph -> RMI a -> Maybe a
 runRMI g ev = runIdentity (runMaybeT (runReaderT ev g))
 
 
+
+{- Coloring function -}
 runColor :: IGraph -> Maybe Coloring
 runColor g = runRMI g colorComp
-
 
 colorComp :: RMI Coloring
 colorComp = do
     g <- ask
-    let vars = getVars $ keys g
+    let f (L2Xvar v) = [v]
+        f _ = []
+        vars = concatMap f $ keys g
     foldM attemptColor coloredRegs vars
-
+    
 
 attemptColor :: Coloring -> L2Var -> RMI Coloring
 attemptColor cs v = do
@@ -48,13 +51,6 @@ coloredRegs = map (\ r -> (L2Xreg r, r)) colors
 
 colors :: [L2Reg]
 colors = [L2EBX, L2ECX, L2EDX, L2EDI, L2ESI, L2EAX]
-
-
-getVars :: [L2X] -> [L2Var]
-getVars = concat . map f
-    where
-        f (L2Xvar v) = [v]
-        f _ = []
 
 
 {- Display -}
