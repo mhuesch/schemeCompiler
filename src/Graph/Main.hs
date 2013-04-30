@@ -6,7 +6,6 @@ import System.Exit (exitFailure)
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (State)
 
-import L2.Grammar
 import L2.Parser
 import Liveness.Liveness
 import Graph.GraphGlue

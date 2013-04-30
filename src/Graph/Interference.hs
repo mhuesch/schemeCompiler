@@ -9,15 +9,6 @@ import Graph.Graph
 import Graph.GraphGlue
 
 
-regs = map L2Xreg [L2EAX, L2EBX, L2ECX, L2EDI, L2EDX, L2ESI]
-
-regGraph :: IGraph
-regGraph = fromAdj [(k1,dests k1) | k1 <- regs]
-    where
-        dests k = [(k2,FixedEdge) | k2 <- regs, k2 /= k]
-
-
-
 buildInterference :: LivenessResult -> IGraph
 buildInterference (LivenessResult xs infos) = foldl instrInterfere g infos
     where
@@ -32,7 +23,6 @@ instrInterfere g iInfo = foldl addMove' (foldl addFixed' g fs) ms
         addFixed' g (x1,x2) = addFixed x1 x2 g
 
 
-
 makeEdgePairs :: InstructionInfo -> ([(L2X,L2X)],[(L2X,L2X)])
 makeEdgePairs (InstructionInfo i interferers) = case i of
     (L2Assign x1 (L2SX x2)) -> let movePerms = perms . onlyLive $ [x1,x2]
@@ -45,6 +35,16 @@ makeEdgePairs (InstructionInfo i interferers) = case i of
         regInterference x = concat . map (\ k -> [(x,k),(k,x)]) . map L2Xreg
 
 
+{- Register stuff -}
+regs = map L2Xreg [L2EAX, L2EBX, L2ECX, L2EDI, L2EDX, L2ESI]
+
+regGraph :: IGraph
+regGraph = fromAdj [(k1,dests k1) | k1 <- regs]
+    where
+        dests k = [(k2,FixedEdge) | k2 <- regs, k2 /= k]
+
+
+{- Helpers -}
 perms :: (Eq a) => [a] -> [(a,a)]
 perms xs = [(x1,x2) | x1 <- xs, x2 <- xs, x1 /= x2]
 

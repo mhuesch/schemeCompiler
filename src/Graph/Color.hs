@@ -23,7 +23,6 @@ runRMI :: IGraph -> RMI a -> Maybe a
 runRMI g ev = runIdentity (runMaybeT (runReaderT ev g))
 
 
-
 {- Coloring function -}
 runColor :: IGraph -> Maybe Coloring
 runColor g = runRMI g colorComp
@@ -46,6 +45,8 @@ attemptColor cs v = do
         [] -> fail "no colors"
         xs -> return $ ((L2Xvar v),head xs):cs
 
+
+{- Register stuff -}
 coloredRegs :: Coloring
 coloredRegs = map (\ r -> (L2Xreg r, r)) colors
 
