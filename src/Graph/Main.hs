@@ -8,8 +8,8 @@ import Text.ParserCombinators.Parsec hiding (State)
 
 import L2.Grammar
 import L2.Parser
-import L2.Display
 import Liveness.Liveness
+import Graph.GraphGlue
 import Graph.Interference
 import Graph.Color
 
@@ -25,8 +25,8 @@ main = do
         Left err -> putStrLn . show $ err
         Right ls -> do
             let iG = buildInterference . liveRes $ ls
-                -- Do coloring
+                coloring = runColor iG
             putStrLn . displayIGraph $ iG
-            putStrLn . displayColors . runColor $ iG
+            putStrLn . displayColors $ coloring
 
 
