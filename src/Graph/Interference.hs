@@ -32,7 +32,7 @@ makeEdgePairs (InstructionInfo i interferers) = case i of
     _ -> ([],iPerms)
     where
         iPerms = perms interferers
-        regInterference x = concat . map (\ k -> [(x,k),(k,x)]) . map L2Xreg
+        regInterference x = concatMap (\ k -> [(x,k),(k,x)]) . map L2Xreg
 
 
 {- Register stuff -}

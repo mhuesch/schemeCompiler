@@ -112,7 +112,7 @@ parseInstruction = (liftM L2ILab parseLabel) <|> do
          <|> (try parseTailCall)
          <|> (try parseReturn)
          <|> (try parseGoto)
-         <|> parseUpdate
+         <|> (try parseUpdate)
          <|> parseRegOp
     whitespaceOrComment
     char ')'
@@ -159,11 +159,14 @@ parseGoto = do
 
 parseUpdate :: Parser L2Instruction
 parseUpdate = do
-    string "(mem"
+    char '('
+    whitespaceOrComment
+    string "mem"
     whitespaceOrComment
     x <- parseX
     whitespaceOrComment
     n <- parseNumber
+    whitespaceOrComment
     char ')'
     whitespaceOrComment
     string "<-"
@@ -197,6 +200,7 @@ parseArrow x = parseArrowParen x
 parseArrowParen :: L2X -> Parser L2Instruction
 parseArrowParen x = do
     char '('
+    whitespaceOrComment
     tok <- many1 (oneOf (['a'..'z'] ++ ['-']))
     whitespaceOrComment
     case tok of
