@@ -6,6 +6,7 @@ import System.Exit (exitFailure)
 import System.Environment
 import Text.ParserCombinators.Parsec hiding (State)
 
+import L2.Grammar
 import L2.Parser
 import L2.Display
 import Spill.Spill
@@ -20,5 +21,5 @@ main = do
     result <- parseFromFile parseSpill (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
-        Right sp -> putStrLn . displayInstrList . spill $ sp
+        Right (L2Spill ls var offset prefix) -> putStrLn . displayInstrList $ spill ls var offset prefix
 

@@ -14,8 +14,8 @@ import L2.Parser
 import L2.Display
 
 
-spill :: L2Spill -> [L2Instruction]
-spill (L2Spill ls var offset prefix) = res
+spill :: [L2Instruction] -> L2Var -> Int -> L2Var -> [L2Instruction]
+spill ls var offset prefix = res
     where (res, _) = runReadState (var, offset, prefix) 0 (spillInstructions ls)
 
 
