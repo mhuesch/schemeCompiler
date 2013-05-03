@@ -14,9 +14,17 @@ import Graph.Graph
 import Graph.GraphGlue
 
 
-{- Coloring monad -}
+{- Coloring -}
 type Coloring = [(L2X,L2Reg)]
 
+addColor :: L2X -> L2Reg -> Coloring -> Coloring
+addColor x r cs = (x,r):cs
+
+lookupColor :: Coloring -> L2X -> Maybe L2Reg
+lookupColor cs x = lookup x cs
+
+
+{- Coloring monad -}
 type RMI a = ReaderT IGraph (MaybeT Identity) a
 
 runRMI :: IGraph -> RMI a -> Maybe a
@@ -40,10 +48,10 @@ attemptColor :: Coloring -> L2Var -> RMI Coloring
 attemptColor cs v = do
     g <- ask
     let fixedNeighbors = filterNeighbors (L2Xvar v) FixedEdge g
-        prohibitedColors = catMaybes $ map (flip lookup $ cs) fixedNeighbors
+        prohibitedColors = catMaybes $ map (lookupColor cs) fixedNeighbors
     case colors \\ prohibitedColors of
         [] -> fail "no colors"
-        xs -> return $ ((L2Xvar v),head xs):cs
+        x:xs -> return $ addColor (L2Xvar v) x cs
 
 
 {- Register stuff -}
