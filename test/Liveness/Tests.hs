@@ -3,6 +3,7 @@ module Livness.Tests where
 
 import Test.HUnit
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 import L2.Grammar
 import L2.Parser
@@ -10,16 +11,12 @@ import L2.Display
 import Liveness.Liveness
 
 
-main = runTestTT $ TestList [testGen, testKill]
+main = runTestTT $ TestList [testGen, testKill, testFOI, testLOI]
 
-{- Helper functions -}
+{- gen tests -}
 parseDisplayGen = displayXList . S.toList . gen . readInstruction
 genStringTest result input = TestCase $ assertEqual input result (parseDisplayGen input)
 
-parseDisplayKill = displayXList . S.toList . kill . readInstruction
-killStringTest result input = TestCase $ assertEqual input result (parseDisplayKill input)
-
-{- gen tests -}
 testGen = TestList [genStringTest "(var)" "(eax <- var)"
                    ,genStringTest "(eax)" "(var <- eax)"
                    ,genStringTest "()" "(var <- (mem ebp -4))"
@@ -53,6 +50,9 @@ testGen = TestList [genStringTest "(var)" "(eax <- var)"
 
 
 {- kill tests -}
+parseDisplayKill = displayXList . S.toList . kill . readInstruction
+killStringTest result input = TestCase $ assertEqual input result (parseDisplayKill input)
+
 testKill = TestList [killStringTest "()" ":f"
                     ,killStringTest "(x2)" "(x2 <- eax)"
                     ,killStringTest "(eax)" "(eax <- var)"
@@ -74,6 +74,17 @@ testKill = TestList [killStringTest "()" ":f"
                     ,killStringTest "(esi)" "(esi <- 20)"
                     ]
 
+foiTest input result = TestCase $ assertEqual (show input) (M.fromList result) (firstOccurrenceIdx input)
+
+testFOI = TestList [foiTest [[1,2],[1,2]] [(1,1),(2,1)]
+                   ,foiTest [[3,2,4,5],[-1,2,9,0],[]] [(3,1),(2,1),(4,1),(5,1),(-1,2),(9,2),(0,2)]
+                   ]
+
+loiTest input result = TestCase $ assertEqual (show input) (M.fromList result) (lastOccurrenceIdx input)
+
+testLOI = TestList [loiTest [[1,2],[1,2]] [(1,2),(2,2)]
+                   ,loiTest [[3,2,4,5],[-1,2,9,0],[]] [(3,1),(2,2),(4,1),(5,1),(-1,2),(9,2),(0,2)]
+                   ]
 
 
 

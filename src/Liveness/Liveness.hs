@@ -5,6 +5,7 @@ import Data.List
 import Data.Maybe
 import Data.Array
 import qualified Data.Set as S
+import qualified Data.Map as M
 
 import Glue
 import L2.Grammar
@@ -25,16 +26,67 @@ liveness :: [L2Instruction] -> LiveArray
 liveness = convergeLiveArray . liveListToArray
 
 liveRes :: [L2Instruction] -> LivenessResult
-liveRes ls = LivenessResult xs infos
+liveRes ls = LivenessResult infos vars
     where
         arr = liveness ls
-        xs = S.toList $ foldl (S.union) S.empty . concat . map (\e -> [inSet e, kill $ instr e]) $ elems arr
+        vars = costSortedVars infos
         infos = case bounds arr of
             (0,-1) -> []
             _ -> (firstIn:allOuts)
         filterKills slot = S.filter isLive . kill $ instr slot
         firstIn = (\ slot -> InstructionInfo (instr slot) (S.toList $ inSet slot)) $ arr ! 0
         allOuts = map (\ slot -> InstructionInfo (instr slot) (S.toList $ S.union (filterKills slot) (outSet slot))) $ elems arr
+
+costSortedVars :: [InstructionInfo] -> [L2Var]
+costSortedVars infos = map fst . sortBy (\ x y -> compare (snd x) (snd y)) $ weightedAssocs
+    where
+        weightedAssocs = computeWeighting interferingVars
+        interferingVars = map (concatMap getVars . intrfr) infos
+        getVars (L2Xvar v) = [v]
+        getVars _ = []
+
+computeWeighting :: (Ord a) => [[a]] ->[(a,Int)]
+computeWeighting ls = map weightTuple $ zip4 (M.keys varCountMap)
+                                             (M.elems varCountMap)
+                                             (M.elems firstIdxMap)
+                                             (M.elems lastIdxMap)
+    where
+        varCountMap = countVarOccurrences $ concat ls
+        firstIdxMap = firstOccurrenceIdx ls
+        lastIdxMap = lastOccurrenceIdx ls
+
+weightTuple :: (a,Int,Int,Int) -> (a,Int)
+weightTuple (x,count,firstIdx,lastIdx) = (x,weight)
+    where
+        weight = (rangeConstant * range) + (countConstant * count)
+        rangeConstant = -4
+        countConstant = 1
+        range = lastIdx - firstIdx
+
+countVarOccurrences :: (Ord a) => [a] -> M.Map a Int
+countVarOccurrences = foldl (flip $ M.alter incOrAdd) M.empty
+    where
+        incOrAdd (Nothing) = Just 1
+        incOrAdd (Just n) = Just (n+1)
+
+firstOccurrenceIdx :: (Ord a) => [[a]] -> M.Map a Int
+firstOccurrenceIdx = customOccurencesIndex [1..]
+
+lastOccurrenceIdx :: (Ord a) => [[a]] -> M.Map a Int
+lastOccurrenceIdx ls = customOccurencesIndex [len,len-1..] (reverse ls)
+    where
+        len = length ls
+
+customOccurencesIndex :: (Ord a) => [Int] -> [[a]] -> M.Map a Int
+customOccurencesIndex idxs = foldl f M.empty . zip idxs
+    where
+        f m (i,xs) = foldl (\ acc x -> case M.lookup x acc of
+                                            Nothing -> M.insert x i acc
+                                            (Just _) -> acc)
+                           m
+                           xs
+
+
 
 
 {- Convert function to LiveArray -}

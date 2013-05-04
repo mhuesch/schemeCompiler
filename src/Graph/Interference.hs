@@ -10,9 +10,9 @@ import Graph.GraphGlue
 
 
 buildInterference :: LivenessResult -> IGraph
-buildInterference (LivenessResult xs infos) = foldl instrInterfere g infos
+buildInterference (LivenessResult infos vars) = foldl instrInterfere g infos
     where
-        g = foldl (flip fillEmpty) regGraph xs
+        g = foldl (flip fillEmpty) regGraph $ map L2Xvar vars
 
 
 instrInterfere :: IGraph -> InstructionInfo -> IGraph

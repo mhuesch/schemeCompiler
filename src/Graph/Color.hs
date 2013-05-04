@@ -68,7 +68,7 @@ displayColors Nothing = "#f"
 displayColors (Just xs) = "(" ++ (concat . intersperse "\n" . sort . map displayVarColor . getVarColors $ xs) ++ ")"
 
 getVarColors :: Coloring -> [(L2Var,L2Reg)]
-getVarColors = concat . map f
+getVarColors = concatMap f
     where
         f ((L2Xvar v),r) = [(v,r)]
         f _ = []

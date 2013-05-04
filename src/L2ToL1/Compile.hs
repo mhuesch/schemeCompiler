@@ -4,6 +4,7 @@ module L2ToL1.Compile where
 import Data.Maybe
 import Control.Monad.Reader
 
+import Glue
 import L2.Grammar
 import L1.Grammar
 import Spill.Spill
@@ -24,7 +25,8 @@ compileMain ls = case stackSpillOffset of
     where
         decESP = Arith ESP Sub (Tnum stackSpillOffset)
         incESP = Arith ESP Add (Tnum stackSpillOffset)
-        (newLs,stackSpillOffset) = compileInstructionsCountSpills 0 ls
+        stackSpillOffset = numSpills * 4
+        (newLs,numSpills) = compileInstructionsCountSpills 0 ls
 
 compileFun :: L2Function -> Function
 compileFun (L2Function label body) = (Function (compileLabel label) (compileInstructions body))
@@ -35,16 +37,24 @@ compileInstructions ls = case stackSpillOffset of
     _ -> decESP:newLs
     where
         decESP = Arith ESP Sub (Tnum stackSpillOffset)
-        (newLs,stackSpillOffset) = compileInstructionsCountSpills 0 ls
+        stackSpillOffset = numSpills * 4
+        (newLs,numSpills) = compileInstructionsCountSpills 0 ls
 
 
 compileInstructionsCountSpills :: Int -> [L2Instruction] -> ([Instruction],Int)
 compileInstructionsCountSpills numSpills ls = case runColor iG of
-    Nothing -> error "spilled"
     (Just cs) -> (colorizeInstructions cs ls, numSpills)
+    Nothing -> let varToSpill = head vars
+                   stackOffset = (-4) * (numSpills + 1)
+                   spillPrefix = makeSpillPrefix numSpills
+               in compileInstructionsCountSpills (numSpills + 1) $ spill ls varToSpill stackOffset spillPrefix
     where
-        lR = liveRes ls
+        lR@(LivenessResult _ vars) = liveRes ls
         iG = buildInterference lR
+
+
+makeSpillPrefix :: Int -> L2Var
+makeSpillPrefix n = L2Var $ "s_" ++ show n ++ "_"
 
 
 colorizeInstructions :: Coloring -> [L2Instruction] -> [Instruction]
