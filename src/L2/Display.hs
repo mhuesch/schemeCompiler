@@ -10,13 +10,13 @@ displayXList xs = "(" ++ (concat . intersperse " " . sort $ map displayX xs) ++ 
 {--------}
 
 displayProgram :: L2Program -> String
-displayProgram (L2Program is fs) = "(" ++ displayInstrList is ++ displayFunctions fs ++ ")"
+displayProgram (L2Program is fs) = "(" ++ displayInstrList is ++ "\n" ++ displayFunctions fs ++ ")"
 
 displayFunctions :: [L2Function] -> String
 displayFunctions = concat . intersperse "\n" . map displayFunction
 
 displayFunction :: L2Function -> String
-displayFunction (L2Function label is) = "(" ++ displayLabel label ++ displayInstructions is ++ ")"
+displayFunction (L2Function label is) = "(" ++ displayLabel label ++ "\n" ++ displayInstructions is ++ ")"
 
 displayInstrList :: [L2Instruction] -> String
 displayInstrList is = "(" ++ displayInstructions is ++ ")"

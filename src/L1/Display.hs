@@ -6,13 +6,13 @@ import L1.Grammar
 
 
 displayProgram :: Program -> String
-displayProgram (Program is fs) = "(" ++ displayInstrList is ++ displayFunctions fs ++ ")"
+displayProgram (Program is fs) = "(" ++ displayInstrList is ++ "\n" ++ displayFunctions fs ++ ")"
 
 displayFunctions :: [Function] -> String
 displayFunctions = concat . intersperse "\n" . map displayFunction
 
 displayFunction :: Function -> String
-displayFunction (Function label is) = "(" ++ displayLabel label ++ displayInstructions is ++ ")"
+displayFunction (Function label is) = "(" ++ displayLabel label ++ "\n" ++ displayInstructions is ++ ")"
 
 displayInstrList :: [Instruction] -> String
 displayInstrList is = "(" ++ displayInstructions is ++ ")"
