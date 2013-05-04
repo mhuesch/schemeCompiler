@@ -40,7 +40,7 @@ This directory contains:
 
   The run-test-fests script expects tests.tar.gz to be unpacked in
   the same directory as itself, but run-test-fests can be run from
-  any directory (and it will still find the test cases)
+  any directory (and it will still find the test cases).
 
   If your compiler executables are shell scripts, be sure the scripts
   begin with a #! line; otherwise, you'll get an error about exec
