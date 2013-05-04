@@ -1,6 +1,7 @@
 module L2ToL1.Compile where
 
 
+import Data.List (isPrefixOf)
 import Data.Maybe
 import Control.Monad.Reader
 
@@ -44,17 +45,25 @@ compileInstructions ls = case stackSpillOffset of
 compileInstructionsCountSpills :: Int -> [L2Instruction] -> ([Instruction],Int)
 compileInstructionsCountSpills numSpills ls = case runColor iG of
     (Just cs) -> (colorizeInstructions cs ls, numSpills)
-    Nothing -> let varToSpill = head vars
-                   stackOffset = (-4) * (numSpills + 1)
-                   spillPrefix = makeSpillPrefix numSpills
-               in compileInstructionsCountSpills (numSpills + 1) $ spill ls varToSpill stackOffset spillPrefix
+    Nothing -> case getNonSpilledVars vars of
+        [] -> error "could not register allocate"
+        (v:vs) -> let varToSpill = v
+                      stackOffset = (-4) * (numSpills + 1)
+                      prefix = makeSpillPrefix numSpills
+                      spilledBody = spill ls varToSpill stackOffset prefix
+                  in compileInstructionsCountSpills (numSpills + 1) spilledBody
     where
         lR@(LivenessResult _ vars) = liveRes ls
         iG = buildInterference lR
 
 
+spillPrefix = "s_"
+
+getNonSpilledVars :: [L2Var] -> [L2Var]
+getNonSpilledVars = filter (\ (L2Var name) -> not $ isPrefixOf spillPrefix name)
+
 makeSpillPrefix :: Int -> L2Var
-makeSpillPrefix n = L2Var $ "s_" ++ show n ++ "_"
+makeSpillPrefix n = L2Var $ spillPrefix ++ show n ++ "_"
 
 
 colorizeInstructions :: Coloring -> [L2Instruction] -> [Instruction]

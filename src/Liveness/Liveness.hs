@@ -59,8 +59,8 @@ weightTuple :: (a,Int,Int,Int) -> (a,Int)
 weightTuple (x,count,firstIdx,lastIdx) = (x,weight)
     where
         weight = (rangeConstant * range) + (countConstant * count)
-        rangeConstant = -4
-        countConstant = 1
+        rangeConstant = -9
+        countConstant = 8
         range = lastIdx - firstIdx
 
 countVarOccurrences :: (Ord a) => [a] -> M.Map a Int

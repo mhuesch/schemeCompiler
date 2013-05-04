@@ -19,4 +19,6 @@ main = do
     result <- parseFromFile parseProg (args !! 0)
     case result of
         Left err -> putStrLn . show $ err
-        Right p -> putStrLn . displayProgram . compileProgram $ p
+        Right p -> do
+            let cp = compileProgram p
+            putStrLn . displayProgram $ cp
