@@ -20,5 +20,6 @@ main = do
     case result of
         Left err -> putStrLn . show $ err
         Right p -> do
-            let cp = compileProgram p
-            putStrLn . displayProgram $ cp
+            case translate p of
+                (Left err) -> putStrLn $ show err
+                (Right cp) -> putStrLn . displayProgram $ cp
