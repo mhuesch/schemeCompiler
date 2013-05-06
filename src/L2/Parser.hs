@@ -76,6 +76,7 @@ parseFunctions = do
 parseFunction :: Parser L2Function
 parseFunction = do
     char '('
+    whitespaceOrComment
     name <- parseLabel
     whitespaceOrComment
     ls <- parseInstructions
