@@ -70,7 +70,7 @@ parseMain = do
 
 parseFunctions :: Parser [L2Function]
 parseFunctions = do
-    fs <- sepBy parseFunction whitespaceOrComment
+    fs <- sepEndBy parseFunction whitespaceOrComment
     return fs
 
 parseFunction :: Parser L2Function
