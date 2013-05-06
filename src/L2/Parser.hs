@@ -260,7 +260,7 @@ parseX = do
         "edi" -> retReg L2EDI
         "ebp" -> retReg L2EBP
         "esp" -> retReg L2ESP
-        otherwise -> return . L2Xvar . L2Var $ (v:vs)
+        otherwise -> return . L2Xvar . L2Var $ ('_':v:vs)
     where
         retReg = return . L2Xreg
 
