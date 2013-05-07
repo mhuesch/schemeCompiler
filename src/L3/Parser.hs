@@ -1,5 +1,9 @@
 {-# OPTIONS_GHC -w #-}
 module L3.Parser where
+
+
+import Control.Monad.Error
+
 import L3.Token
 import L3.Grammar
 
@@ -944,32 +948,45 @@ happyNewToken action sts stk (tk:tks) =
 happyError_ 40 tk tks = happyError' tks
 happyError_ _ tk tks = happyError' (tk:tks)
 
-newtype HappyIdentity a = HappyIdentity a
-happyIdentity = HappyIdentity
-happyRunIdentity (HappyIdentity a) = a
+happyThen :: () => E a -> (a -> E b) -> E b
+happyThen = (thenE)
+happyReturn :: () => a -> E a
+happyReturn = (returnE)
+happyThen1 m k tks = (thenE) m (\a -> k a tks)
+happyReturn1 :: () => a -> b -> E a
+happyReturn1 = \a tks -> (returnE) a
+happyError' :: () => [(Token)] -> E a
+happyError' = parseError
 
-instance Monad HappyIdentity where
-    return = HappyIdentity
-    (HappyIdentity p) >>= q = q p
-
-happyThen :: () => HappyIdentity a -> (a -> HappyIdentity b) -> HappyIdentity b
-happyThen = (>>=)
-happyReturn :: () => a -> HappyIdentity a
-happyReturn = (return)
-happyThen1 m k tks = (>>=) m (\a -> k a tks)
-happyReturn1 :: () => a -> b -> HappyIdentity a
-happyReturn1 = \a tks -> (return) a
-happyError' :: () => [(Token)] -> HappyIdentity a
-happyError' = HappyIdentity . parseError
-
-calc tks = happyRunIdentity happySomeParser where
+calc tks = happySomeParser where
   happySomeParser = happyThen (happyParse action_0 tks) (\x -> case x of {HappyAbsSyn4 z -> happyReturn z; _other -> notHappyAtAll })
 
 happySeq = happyDontSeq
 
 
-parseError :: [Token] -> a
-parseError msg = error $ show msg
+data E a = Ok a
+         | Failed String
+         deriving (Show)
+
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k = case m of 
+    Ok a -> k a
+    Failed e -> Failed e
+
+returnE :: a -> E a
+returnE a = Ok a
+
+failE :: String -> E a
+failE err = Failed err
+
+catchE :: E a -> (String -> E a) -> E a
+catchE m k = case m of
+    Ok a -> Ok a
+    Failed e -> k e
+
+
+parseError :: [Token] -> E a
+parseError tokens = failE $ "Parse error. Tokens: " ++ show tokens
 
 
 readProg = calc . lexer

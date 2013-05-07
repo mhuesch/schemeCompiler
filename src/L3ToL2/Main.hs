@@ -14,4 +14,6 @@ main = do
         putStrLn "usage: filename"
         exitFailure
     result <- liftM readProg (readFile (args !! 0))
-    putStrLn . show $ result
+    case result of
+        Ok p -> putStrLn . show $ p
+        Failed err -> putStrLn err

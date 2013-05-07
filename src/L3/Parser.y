@@ -1,13 +1,17 @@
 {
 module L3.Parser where
+
+
+import Control.Monad.Error
+
 import L3.Token
 import L3.Grammar
-
 }
 
 %name calc
 %tokentype { Token }
 %error { parseError }
+%monad { E } { thenE } { returnE }
 
 %token
     '('     { TOpen }
@@ -94,8 +98,28 @@ xs      : {- empty -} { [] }
 
 
 {
-parseError :: [Token] -> a
-parseError msg = error $ show msg
+data E a = Ok a
+         | Failed String
+
+thenE :: E a -> (a -> E b) -> E b
+m `thenE` k = case m of 
+    Ok a -> k a
+    Failed e -> Failed e
+
+returnE :: a -> E a
+returnE a = Ok a
+
+failE :: String -> E a
+failE err = Failed err
+
+catchE :: E a -> (String -> E a) -> E a
+catchE m k = case m of
+    Ok a -> Ok a
+    Failed e -> k e
+
+
+parseError :: [Token] -> E a
+parseError tokens = failE $ "Parse error. Tokens: " ++ show tokens
 
 
 readProg = calc . lexer
