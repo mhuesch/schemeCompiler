@@ -7,7 +7,7 @@ data L3Program = L3Program L3E [L3Function]
 data L3Function = L3Function L3Label [L3X] L3E
                   deriving (Show)
 
-data L3E = L3Let [(L3X,L3D)] L3E
+data L3E = L3Let L3X L3D L3E
          | L3If L3V L3E L3E
          | L3Ed L3D
          deriving (Show)

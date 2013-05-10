@@ -50,9 +50,9 @@ p       : '(' e funs ')'         { L3Program $2 $3 }
 funs    : {- empty -} { [] }
         | funs fun    { $2 : $1 }
 
-fun     : '(' label '(' xs ')' e ')'    { L3Function $2 $4 $6}
+fun     : '(' label '(' xs ')' e ')'    { L3Function $2 (reverse $4) $6}
 
-e       : '(' let '(' xd_pairs ')' e ')'  { L3Let $4 $6 }
+e       : '(' let '(' '(' x d ')' ')' e ')'  { L3Let $5 $6 $9 }
         | '(' if v e e ')'                { L3If $3 $4 $5 }
         | d                               { L3Ed $1 }
 
@@ -64,9 +64,9 @@ d       : '(' '+' v v ')'       { L3Binop L3Add $3 $4 }
         | '(' '=' v v ')'       { L3Binop L3Equal $3 $4 }
         | '(' isA v ')'         { L3Predicate L3IsA $3 }
         | '(' isNumber v ')'    { L3Predicate L3IsNumber $3 }
-        | '(' v vs ')'          { L3Apply $2 $3 }
+        | '(' v vs ')'          { L3Apply $2 (reverse $3) }
         | '(' newArray v v ')'  { L3NewArray $3 $4 }
-        | '(' newTuple vs ')'   { L3NewTuple $3 }
+        | '(' newTuple vs ')'   { L3NewTuple (reverse $3) }
         | '(' aref v v ')'      { L3Aref $3 $4 }
         | '(' aset v v v ')'    { L3Aset $3 $4 $5 }
         | '(' alen v ')'        { L3Alen $3 }
@@ -82,15 +82,10 @@ v       : x        { L3Vx $1 }
         | label    { L3Vlab $1 }
         | int      { L3Vnum $1 }
 
-x       : var      { L3X $1 }
-
 vs      : {- empty -} { [] }
         | vs v        { $2 : $1 }
 
-xd_pair : '(' x d ')'      { ($2, $3) }
-
-xd_pairs : {- empty -}      { [] }
-         | xd_pairs xd_pair { $2 : $1 }
+x       : var      { L3X $1 }
 
 xs      : {- empty -} { [] }
         | xs x        { $2 : $1 }
@@ -122,6 +117,20 @@ parseError :: [Token] -> E a
 parseError tokens = failE $ "Parse error. Tokens: " ++ show tokens
 
 
-readProg = calc . lexer
+dropEnd :: [Token] -> [Token]
+dropEnd [] = []
+dropEnd (t:ts) = case t of
+    TOpen -> t : matchClose 1 ts
+    _ -> t : dropEnd ts
+
+matchClose :: Int -> [Token] -> [Token]
+matchClose _ [] = []
+matchClose 0 ts = []
+matchClose i (t:ts) = case t of
+    TOpen -> t : matchClose (i + 1) ts
+    TClose -> t : matchClose (i - 1) ts
+    _ -> t : matchClose i ts
+
+readProg = calc . dropEnd . lexer
 }
 
