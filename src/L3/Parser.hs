@@ -826,7 +826,7 @@ happyReduction_26 _  = notHappyAtAll
 happyReduce_27 = happySpecReduce_1  9 happyReduction_27
 happyReduction_27 (HappyTerminal (TLab happy_var_1))
 	 =  HappyAbsSyn9
-		 (L3Label happy_var_1
+		 (L3Label $ '_':happy_var_1
 	)
 happyReduction_27 _  = notHappyAtAll 
 
@@ -867,7 +867,7 @@ happyReduction_32 _ _  = notHappyAtAll
 happyReduce_33 = happySpecReduce_1  12 happyReduction_33
 happyReduction_33 (HappyTerminal (TVar happy_var_1))
 	 =  HappyAbsSyn12
-		 (L3X happy_var_1
+		 (L3X $ '_':happy_var_1
 	)
 happyReduction_33 _  = notHappyAtAll 
 

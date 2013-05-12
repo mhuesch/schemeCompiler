@@ -76,7 +76,7 @@ d       : '(' '+' v v ')'       { L3Binop L3Add $3 $4 }
         | '(' closureVars v ')' { L3ClosureVars $3 }
         | v                     { L3Dv $1 }
 
-label   : lab      { L3Label $1 }
+label   : lab      { L3Label $ '_':$1 }
 
 v       : x        { L3Vx $1 }
         | label    { L3Vlab $1 }
@@ -85,7 +85,7 @@ v       : x        { L3Vx $1 }
 vs      : {- empty -} { [] }
         | vs v        { $2 : $1 }
 
-x       : var      { L3X $1 }
+x       : var      { L3X $ '_':$1 }
 
 xs      : {- empty -} { [] }
         | xs x        { $2 : $1 }
