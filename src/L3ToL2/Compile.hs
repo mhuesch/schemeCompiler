@@ -83,24 +83,29 @@ compileE (L3Ed d) = compileD (eaxX) True d
 
 
 compileD :: L2X -> Bool -> L3D -> CS [L2Instruction]
-compileD target isTail (L3Binop biop v1 v2) = liftM (addReturn isTail) $ case biop of
-    L3Add -> return [L2Assign target (encodeS v1)
-                    ,L2Arith target L2Add (encodeT v2)
-                    ,L2Arith target L2Sub (L2Tnum 1)]
-    L3Sub -> return [L2Assign target (encodeS v1)
-                    ,L2Arith target L2Sub (encodeT v2)
-                    ,L2Arith target L2Add (L2Tnum 1)]
-    L3Mult -> do
-        tmp <- liftM L2Xvar newVar
-        return $ [L2Assign tmp (encodeS v1)
-                 ,L2ShiftNum tmp L2ShiftRight 1
-                 ,L2Assign target (encodeS v2)
-                 ,L2ShiftNum target L2ShiftRight 1
-                 ,L2Arith target L2Mult (L2TX tmp)]
-                 ++ encodeInstrs target
-    _ -> let cmp = compileCMP biop
-         in return $ [L2SaveCmp target (encodeT v1) cmp (encodeT v2)]
+compileD target isTail (L3Binop biop v1 v2) = do
+    tmp <- newVar
+    let tmpX = L2Xvar tmp
+    liftM (addReturn isTail) $ case biop of
+        L3Add -> return [L2Assign tmpX (encodeS v1)
+                        ,L2Arith tmpX L2Add (encodeT v2)
+                        ,L2Arith tmpX L2Sub (L2Tnum 1)
+                        ,L2Assign target (L2SX tmpX)]
+        L3Sub -> return [L2Assign tmpX (encodeS v1)
+                        ,L2Arith tmpX L2Sub (encodeT v2)
+                        ,L2Arith tmpX L2Add (L2Tnum 1)
+                        ,L2Assign target (L2SX tmpX)]
+        L3Mult -> do
+            tmp <- liftM L2Xvar newVar
+            return $ [L2Assign tmp (encodeS v1)
+                     ,L2ShiftNum tmp L2ShiftRight 1
+                     ,L2Assign target (encodeS v2)
+                     ,L2ShiftNum target L2ShiftRight 1
+                     ,L2Arith target L2Mult (L2TX tmp)]
                      ++ encodeInstrs target
+        _ -> let cmp = compileCMP biop
+             in return $ [L2SaveCmp target (encodeT v1) cmp (encodeT v2)]
+                         ++ encodeInstrs target
 
 compileD target isTail (L3Predicate pr v) = return . addReturn isTail $
     [L2Assign target (encodeS v)
@@ -122,54 +127,61 @@ compileD target isTail (L3NewArray v1 v2) = return . addReturn isTail $
     ,L2Assign target eaxS]
 
 compileD target isTail (L3NewTuple vs) = do
-    let offsets = [4,8..]
+    tmp <- newVar
+    let tmpX = L2Xvar tmp
+        offsets = [4,8..]
         tupleSs = map encodeS vs
         body = [L2Allocate (L2Tnum (2*(length vs) + 1)) (L2Tnum 1)
-               ,L2Assign target eaxS]
-               ++ zipWith (\ offset s -> L2Update target offset s) offsets tupleSs
+               ,L2Assign tmpX eaxS]
+               ++ zipWith (\ offset s -> L2Update tmpX offset s) offsets tupleSs
+               ++ [L2Assign target eaxS]
     return . addReturn isTail $ body
 
 compileD target isTail (L3Aref v1 v2) = do
-    tmp <- newVar
+    tmp1 <- newVar
+    tmp2 <- newVar
     notBadLabel <- newLab
     badLabel <- newLab
     goodLabel <- newLab
     let v1X =  compileVX v1
-        tmpX = L2Xvar tmp
+        tmp1X = L2Xvar tmp1
+        tmp2X = L2Xvar tmp2
     return . addReturn isTail $
-        [L2Assign target (encodeS v2)
-        ,L2ShiftNum target L2ShiftRight 1
-        ,L2ReadMem tmpX v1X 0
-        ,L2Cjump (L2TX target) L2LessThan (L2TX tmpX) notBadLabel badLabel
+        [L2Assign tmp1X (encodeS v2)
+        ,L2ShiftNum tmp1X L2ShiftRight 1
+        ,L2ReadMem tmp2X v1X 0
+        ,L2Cjump (L2TX tmp1X) L2LessThan (L2TX tmp2X) notBadLabel badLabel
         ,L2ILab notBadLabel
-        ,L2Cjump (L2TX target) L2LessThan (L2Tnum 0) badLabel goodLabel
+        ,L2Cjump (L2TX tmp1X) L2LessThan (L2Tnum 0) badLabel goodLabel
         ,L2ILab badLabel
         ,L2ArrayError (L2TX v1X) (encodeT v2)
         ,L2ILab goodLabel
-        ,L2Arith target L2Mult (L2Tnum 4)
-        ,L2Arith target L2Add (L2TX v1X)
-        ,L2ReadMem target target 4]
+        ,L2Arith tmp1X L2Mult (L2Tnum 4)
+        ,L2Arith tmp1X L2Add (L2TX v1X)
+        ,L2ReadMem target tmp1X 4]
 
 compileD target isTail (L3Aset v1 v2 v3) = do
-    tmp <- newVar
+    tmp1 <- newVar
+    tmp2 <- newVar
     notBadLabel <- newLab
     badLabel <- newLab
     goodLabel <- newLab
     let v1X =  compileVX v1
-        tmpX = L2Xvar tmp
+        tmp1X = L2Xvar tmp1
+        tmp2X = L2Xvar tmp2
     return . addReturn isTail $
-        [L2Assign target (encodeS v2)
-        ,L2ShiftNum target L2ShiftRight 1
-        ,L2ReadMem tmpX v1X 0
-        ,L2Cjump (L2TX target) L2LessThan (L2TX tmpX) notBadLabel badLabel
+        [L2Assign tmp1X (encodeS v2)
+        ,L2ShiftNum tmp1X L2ShiftRight 1
+        ,L2ReadMem tmp2X v1X 0
+        ,L2Cjump (L2TX tmp1X) L2LessThan (L2TX tmp2X) notBadLabel badLabel
         ,L2ILab notBadLabel
-        ,L2Cjump (L2TX target) L2LessThan (L2Tnum 0) badLabel goodLabel
+        ,L2Cjump (L2TX tmp1X) L2LessThan (L2Tnum 0) badLabel goodLabel
         ,L2ILab badLabel
         ,L2ArrayError (L2TX v1X) (encodeT v2)
         ,L2ILab goodLabel
-        ,L2Arith target L2Mult (L2Tnum 4)
-        ,L2Arith target L2Add (L2TX v1X)
-        ,L2Update target 4 (encodeS v3)
+        ,L2Arith tmp1X L2Mult (L2Tnum 4)
+        ,L2Arith tmp1X L2Add (L2TX v1X)
+        ,L2Update tmp1X 4 (encodeS v3)
         ,L2Assign target (L2Snum 1)]
 
 compileD target isTail (L3Alen v) = return . addReturn isTail $
