@@ -472,7 +472,7 @@ happyReduction_1 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn4
-		 (L4Program happy_var_2 happy_var_3
+		 (L4Program happy_var_2 (reverse happy_var_3)
 	) `HappyStk` happyRest
 
 happyReduce_2 = happySpecReduce_0  5 happyReduction_2

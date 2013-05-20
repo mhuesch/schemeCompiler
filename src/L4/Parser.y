@@ -46,7 +46,7 @@ import L4.Grammar
 
 %%
 
-p       : '(' e funs ')'         { L4Program $2 $3 }
+p       : '(' e funs ')'         { L4Program $2 (reverse $3) }
 
 funs    : {- empty -} { [] }
         | funs fun    { $2 : $1 }
