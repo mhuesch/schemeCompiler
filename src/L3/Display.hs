@@ -20,7 +20,7 @@ displayE (L3If v e1 e2) = "(if " ++ displayV v ++ "\n" ++ displayE e1 ++ "\n" ++
 displayE (L3Ed d) = displayD d
 
 displayD :: L3D -> String
-displayD (L3Binop bop v1 v2) = "(" ++ displayBiop bop ++ " " ++ displayV v1 ++ " " ++ displayV v1 ++ ")"
+displayD (L3Binop bop v1 v2) = "(" ++ displayBiop bop ++ " " ++ displayV v1 ++ " " ++ displayV v2 ++ ")"
 displayD (L3Predicate p v) = "(" ++ displayPred p ++ " " ++ displayV v ++ ")"
 displayD (L3Apply v vs) = "(" ++ displayVs (v:vs) ++ ")"
 displayD (L3NewArray v1 v2) = "(new-array " ++ displayVs [v1,v2] ++ ")"
@@ -62,4 +62,4 @@ displayPred L3IsA = "a?"
 
 
 displayLabel :: L3Label -> String
-displayLabel (L3Label name) = name
+displayLabel (L3Label name) = ':':name
