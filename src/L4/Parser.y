@@ -59,7 +59,7 @@ e       : '(' let '(' '(' x e ')' ')' e ')'  { L4Let $5 $6 $9 }
         | '(' isA e ')'                      { L4Predicate L4IsA $3 }
         | '(' isNumber e ')'                 { L4Predicate L4IsNumber $3 }
         | '(' newArray e e ')'               { L4NewArray $3 $4 }
-        | '(' newTuple es ')'                { L4NewTuple $3 }
+        | '(' newTuple es ')'                { L4NewTuple (reverse $3) }
         | '(' aref e e ')'                   { L4Aref $3 $4 }
         | '(' aset e e e ')'                 { L4Aset $3 $4 $5 }
         | '(' alen e ')'                     { L4Alen $3 }

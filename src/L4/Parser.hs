@@ -578,7 +578,7 @@ happyReduction_11 (_ `HappyStk`
 	_ `HappyStk`
 	happyRest)
 	 = HappyAbsSyn7
-		 (L4NewTuple happy_var_3
+		 (L4NewTuple (reverse happy_var_3)
 	) `HappyStk` happyRest
 
 happyReduce_12 = happyReduce 5 7 happyReduction_12
