@@ -2,6 +2,7 @@ module L4ToL3.Compile where
 
 
 import Control.Monad.State
+import qualified Data.Map as M
 
 import L4.Grammar
 import L3.Grammar
@@ -12,13 +13,13 @@ translate (L4Program e fs) = (L3Program (compileE e)
 
 
 
-startLCS = LiftCountState 0 id
+startCS = CountState 0
 
-data LiftCountState = LiftCountState { xCount :: Int
-                                     , liftedOut :: L3E -> L3E }
+data CountState = CountState { xCount :: Int
+                             }
 
-type LCS a = State LiftCountState a
-runLCS = runState
+type CS a = State CountState a
+runCS = runState
 
 
 
@@ -34,8 +35,8 @@ prefix4X n = L4X $ "x_" ++ show n
 
 
 getIncXCount = do
-    lcs@(LiftCountState xc _) <- get
-    put lcs{ xCount = xc + 1}
+    cs@(CountState xc) <- get
+    put cs{ xCount = xc + 1}
     return xc
 
 
@@ -48,10 +49,72 @@ compileFunction (L4Function lab xs e) = (L3Function (compileLabel lab)
 
 
 compileE :: L4E -> L3E
-compileE e = lifted outE
+compileE e = fst $ runCS (process e) startCS
     where
-        (outE,(LiftCountState _ lifted)) = runLCS (norm e) startLCS
+        process x = (return x) >>= renamePass M.empty >>= norm
 
+
+renamePass :: M.Map L4X L4X -> L4E -> CS L4E
+renamePass env (L4Let x e1 e2) = do
+    xN <- new4X
+    let newEnv = (M.insert x xN env)
+    e1_r <- renamePass env e1
+    e2_r <- renamePass newEnv e2
+    return $ L4Let xN e1_r e2_r
+
+renamePass env (L4If e1 e2 e3) = tripleERename env e1 e2 e3 L4If
+
+renamePass env (L4Apply e es) = do
+    (e1_r:es_r) <- mapM (renamePass env) (e:es)
+    return $ L4Apply e1_r es_r
+
+renamePass env (L4NewArray e1 e2) = doubleERename env e1 e2 L4NewArray
+
+renamePass env (L4NewTuple es) = do
+    es_r <- mapM (renamePass env) es
+    return $ L4NewTuple es_r
+
+renamePass env (L4Aref e1 e2) = doubleERename env e1 e2 L4Aref
+
+renamePass env (L4Aset e1 e2 e3) = tripleERename env e1 e2 e3 L4Aset
+
+renamePass env (L4Alen e1) = singleERename env e1 L4Alen
+
+renamePass env (L4Begin e1 e2) = doubleERename env e1 e2 L4Begin
+
+renamePass env (L4Print e1) = singleERename env e1 L4Print
+
+renamePass env (L4MakeClosure lab e1) = singleERename env e1 (L4MakeClosure lab)
+
+renamePass env (L4ClosureProc e1) = singleERename env e1 L4ClosureProc
+
+renamePass env (L4ClosureVars e1) = singleERename env e1 L4ClosureVars
+
+renamePass env (L4Binop bop e1 e2) = doubleERename env e1 e2 (L4Binop bop)
+
+renamePass env (L4Predicate p e1) = singleERename env e1 (L4Predicate p)
+
+renamePass env e@(L4Enum _) = return e
+
+renamePass env e@(L4Ex x) = case M.lookup x env of
+    Nothing -> return e
+    Just xN -> return $ L4Ex xN
+
+renamePass env e@(L4Elab _) = return e
+
+------
+
+singleERename env e1 f = do
+    e1_r <- renamePass env e1
+    return $ f e1_r
+
+doubleERename env e1 e2 f = do
+    [e1_r,e2_r] <- mapM (renamePass env) [e1,e2]
+    return $ f e1_r e2_r
+
+tripleERename env e1 e2 e3 f = do
+    [e1_r,e2_r,e3_r] <- mapM (renamePass env) [e1,e2,e3]
+    return $ f e1_r e2_r e3_r
 
 data Context = LetCtxt L4X L4E Context
              | IfCtxt L4E L4E Context
@@ -76,10 +139,10 @@ data Context = LetCtxt L4X L4E Context
              | NoCtxt
 
 
-norm :: L4E -> LCS L3E
+norm :: L4E -> CS L3E
 norm e = find e NoCtxt
 
-find :: L4E -> Context -> LCS L3E
+find :: L4E -> Context -> CS L3E
 find e k = case e of
     (L4Let x r b) -> find r (LetCtxt x b k)
     (L4If tst thn els) -> find tst (IfCtxt thn els k)
@@ -103,7 +166,7 @@ find e k = case e of
 
 
 
-fill :: L4E -> Context -> LCS L3E
+fill :: L4E -> Context -> CS L3E
 fill d k = case k of
     (LetCtxt x b k2) -> do
         d_res <- find b k2

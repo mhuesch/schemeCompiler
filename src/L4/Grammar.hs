@@ -46,4 +46,4 @@ data L4Label = L4Label String
                deriving (Show)
 
 data L4X = L4X String
-           deriving (Show)
+           deriving (Show, Ord, Eq)
