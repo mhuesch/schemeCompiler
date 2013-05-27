@@ -3,6 +3,7 @@ module L5ToL4.Compile where
 
 import Control.Monad.State
 import Data.List
+import qualified Data.Map as M
 
 import L5.Grammar
 import L4.Grammar
@@ -11,7 +12,8 @@ import L4.Grammar
 translate :: L5Program -> L4Program
 translate (L5Program e) = L4Program eOut gfs
     where
-        (eOut,(CountFunState _ _ gfs)) = runCFS (compileE e) startCFS
+        process e = renamePass M.empty e >>= compileE
+        (eOut,(CountFunState _ _ gfs)) = runCFS (process e) startCFS
 
 
 
@@ -32,6 +34,13 @@ new4X = liftM prefix4X getIncXCount
 prefix4X :: Int -> L4X
 prefix4X n = L4X $ "x_" ++ show n
 
+--
+new5X = liftM prefix5X getIncXCount
+
+prefix5X :: Int -> L5X
+prefix5X n = L5X $ "v_" ++ show n
+
+--
 getIncXCount :: CFS Int
 getIncXCount = do
     cfs@(CountFunState xc _ _) <- get
@@ -199,7 +208,6 @@ substituteE t r (L5Begin e1 e2) = doubleSub L5Begin (substituteE t r) e1 e2
 substituteE t r (L5Apply f as) = L5Apply (substituteE t r f) $ map (substituteE t r) as
 substituteE t r e = e
 
-
 singleSub f subF e1 = f (subF e1)
 doubleSub f subF e1 e2 = f (subF e1) (subF e2)
 tripleSub f subF e1 e2 e3 = f (subF e1) (subF e2) (subF e3)
@@ -239,6 +247,45 @@ compileX (L5X name) = L4X name
 
 
 {- Rename let-bound variables -}
+renamePass :: M.Map L5X L5X -> L5E -> CFS L5E
+renamePass env (L5Lambda xs e) = liftM (L5Lambda xs) (renamePass newEnv e)
+    where
+        newEnv = foldl (\ acc x -> M.delete x acc) env xs
+
+renamePass env e@(L5Ex x) = case M.lookup x env of
+    Nothing -> return e
+    Just xN -> return $ L5Ex xN
+
+renamePass env (L5Let x d b) = do
+    xN <- new5X
+    let newEnv = M.insert x xN env
+    d_r <- renamePass env d
+    b_r <- renamePass newEnv b
+    return $ L5Let xN d_r b_r
+
+renamePass env (L5LetRec x d b) = do
+    xN <- new5X
+    let newEnv = M.insert x xN env
+    [d_r,b_r] <- mapM (renamePass newEnv) [d,b]
+    return $ L5LetRec xN d_r b_r
+
+renamePass env (L5If tst thn els) = do
+    [tst_r,thn_r,els_r] <- mapM (renamePass env) [tst,thn,els]
+    return $ L5If tst_r thn_r els_r
+
+renamePass env (L5NewTuple es) = do
+    es_r <- mapM (renamePass env) es
+    return $ L5NewTuple es_r
+
+renamePass env (L5Begin e1 e2) = do
+    [e1_r,e2_r] <- mapM (renamePass env) [e1,e2]
+    return $ L5Begin e1_r e2_r
+
+renamePass env (L5Apply f as) = do
+    (f_r:as_r) <- mapM (renamePass env) (f:as)
+    return $ L5Apply f_r as_r
+
+renamePass env e = return e
 
 
 

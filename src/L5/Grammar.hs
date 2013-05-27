@@ -17,7 +17,7 @@ data L5E = L5Lambda [L5X] L5E
          deriving (Show)
 
 data L5X = L5X String
-           deriving (Show, Eq)
+           deriving (Show, Eq, Ord)
 
 data L5prim = L5pb L5biop
             | L5pp L5pred
