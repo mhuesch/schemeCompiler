@@ -52,7 +52,7 @@ getIncXCount = do
 newLab = liftM prefixLab getIncLabCount
 
 prefixLab :: Int -> L4Label
-prefixLab n = L4Label $ "l_" ++ show n
+prefixLab n = L4Label $ "f_" ++ show n
 
 getIncLabCount :: CFS Int
 getIncLabCount = do
