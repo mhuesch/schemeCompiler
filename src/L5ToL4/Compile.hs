@@ -1,7 +1,9 @@
 module L5ToL4.Compile where
 
 
+import Control.Monad.Identity
 import Control.Monad.State
+import Control.Monad.Reader
 import Data.List
 import qualified Data.Map as M
 
@@ -13,7 +15,7 @@ translate :: L5Program -> L4Program
 translate (L5Program e) = L4Program eOut gfs
     where
         process e = renamePass M.empty e >>= compileE
-        (eOut,(CountFunState _ _ gfs)) = runCFS (process e) startCFS
+        (eOut,(CountFunState _ _ gfs)) = runCFS startCFS M.empty (process e)
 
 
 
@@ -24,8 +26,8 @@ data CountFunState = CountFunState { xCount :: Int
 startCFS = CountFunState 0 0 []
 
 
-type CFS a = State CountFunState a
-runCFS = runState
+type CFS a = ReaderT (M.Map L5X (L4Label,[L5X])) (StateT CountFunState Identity) a
+runCFS st env comp = runIdentity (runStateT (runReaderT comp env) st)
 
 
 {- Stateful functions -}
@@ -77,37 +79,63 @@ unpackLets tup_name xs = foldl (\ acc (x,idx) -> acc . (L4Let x (L4Aref (L4Ex tu
 
 compileE :: L5E -> CFS L4E
 compileE (L5Lambda xs e) = do
+    env <- ask
     fun_lab <- newLab
     e_c <- compileE e
-    let freeXs = map compileX $ findFree xs e
-        convertedXs = (map compileX xs)
+    let freeXs = map compileX $ (findFree xs e) \\ M.keys env
+        compiledArgs = (map compileX xs)
         extra_args = L4X "args"
-        fun_args = if length convertedXs > 2
-                      then [L4X "vars", (head convertedXs), extra_args]
-                      else (L4X "vars":convertedXs)
-        fun_body = if length convertedXs > 2
-                      then unpackLets extra_args (tail convertedXs) $ e_c
+        fun_args = if length compiledArgs > 2
+                      then [L4X "vars", (head compiledArgs), extra_args]
+                      else (L4X "vars":compiledArgs)
+        fun_body = if length compiledArgs > 2
+                      then unpackLets extra_args (tail compiledArgs) $ e_c
                       else e_c
         vars_name = L4X "vars"
         fun = L4Function fun_lab fun_args (unpackLets vars_name freeXs $ fun_body)
     addFun fun
     return . L4MakeClosure fun_lab . L4NewTuple $ map L4Ex freeXs
 
-compileE (L5Ex x) = return $ L4Ex (compileX x)
+compileE (L5Ex x) = do
+    env <- ask
+    case M.lookup x env of
+        Nothing -> return $ L4Ex (compileX x)
+        Just (fun_lab,args) -> compileE (L5Lambda args (L5Apply (L5Ex x) (map L5Ex args)))
 
 compileE (L5Let x e1 e2) = do
     [e1_c, e2_c] <- compileEs [e1,e2]
     return $ L4Let (compileX x) e1_c e2_c
 
-compileE (L5LetRec x e1 e2) = do
-    let x_c = compileX x
-        xref = L5Apply (L5Primitive L5Aref) [(L5Ex x), (L5Enum 0)]
-        e1_subbed = substituteE x xref e1
-        e2_subbed = substituteE x xref e2
-    [e1_c,e2_c] <- compileEs [e1_subbed,e2_subbed]
-    return $ L4Let x_c (L4NewTuple [(L4Enum 0)])
-                       (L4Begin (L4Aset (L4Ex x_c) (L4Enum 0) e1_c)
-                                e2_c)
+compileE (L5LetRec x e1 e2) = case e1 of
+    L5Lambda args body -> if (length $ findFree (x:args) body) /= 0
+                             then normalLetRec
+                             else do
+                                fun_lab <- newLab
+                                body_c <- local (M.insert x (fun_lab,args)) $ compileE body
+                                -- Do extra args here
+                                let fun_args = map compileX args
+                                    extra_args = L4X "args"
+                                    compiledArgs = map compileX args
+                                    packed_fun_args = if length fun_args > 3
+                                                         then (take 2 fun_args) ++ [extra_args]
+                                                         else fun_args
+                                    unpack_extra_args = if length args > 3
+                                                           then unpackLets extra_args $ drop 2 compiledArgs
+                                                           else id
+                                    fun_body = unpack_extra_args body_c
+                                addFun $ L4Function fun_lab packed_fun_args fun_body
+                                local (M.insert x (fun_lab,args)) $ compileE e2
+
+    _ -> normalLetRec
+    where normalLetRec = do
+                let x_c = compileX x
+                    xref = L5Apply (L5Primitive L5Aref) [(L5Ex x), (L5Enum 0)]
+                    e1_subbed = substituteE x xref e1
+                    e2_subbed = substituteE x xref e2
+                [e1_c,e2_c] <- compileEs [e1_subbed,e2_subbed]
+                return $ L4Let x_c (L4NewTuple [(L4Enum 0)])
+                                   (L4Begin (L4Aset (L4Ex x_c) (L4Enum 0) e1_c)
+                                            e2_c)
 
 compileE (L5If tst thn els) = do
     [tst_c,thn_c,els_c] <- compileEs [tst,thn,els]
@@ -152,15 +180,26 @@ compileE (L5Apply f as) = case f of
         L5pp p -> do
             a1_c <- compileE (as !! 0)
             return $ L4Predicate (compilePredHead p) a1_c
-    _ -> do
-        f_c <- compileE f
-        as_c <- compileEs as
-        let clos_proc = L4ClosureProc f_c
-            clos_vars = L4ClosureVars f_c
-            fun_args = if length as > 2
-                          then [clos_vars, (head as_c), L4NewTuple (tail as_c)]
-                          else (clos_vars:as_c)
-        return $ L4Apply clos_proc fun_args
+    (L5Ex x) -> do
+        env <- ask
+        case M.lookup x env of
+            Nothing -> genericApply
+            Just (fun_lab,_) -> do
+                as_c <- compileEs as
+                let fun_args = if length as_c > 3
+                                  then (take 2 as_c) ++ [L4NewTuple (drop 2 as_c)]
+                                  else as_c
+                return $ L4Apply (L4Elab fun_lab) fun_args
+    _ -> genericApply
+    where genericApply = do
+                f_c <- compileE f
+                as_c <- compileEs as
+                let clos_proc = L4ClosureProc f_c
+                    clos_vars = L4ClosureVars f_c
+                    fun_args = if length as > 2
+                                  then [(head as_c), L4NewTuple (tail as_c)]
+                                  else as_c
+                return $ L4Apply clos_proc (clos_vars:fun_args)
 
 compileE (L5Primitive p) = case p of
     L5Print -> oneArityLambda L5Print
