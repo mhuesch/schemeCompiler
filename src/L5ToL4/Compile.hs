@@ -82,7 +82,7 @@ compileE (L5Lambda xs e) = do
     env <- ask
     fun_lab <- newLab
     e_c <- compileE e
-    let freeXs = map compileX $ (findFree xs e) \\ M.keys env
+    let freeXs = map compileX $ (findFreeNonDuplicates xs e) \\ M.keys env
         compiledArgs = (map compileX xs)
         extra_args = L4X "args"
         fun_args = if length compiledArgs > 2
@@ -107,7 +107,7 @@ compileE (L5Let x e1 e2) = do
     return $ L4Let (compileX x) e1_c e2_c
 
 compileE (L5LetRec x e1 e2) = case e1 of
-    L5Lambda args body -> if (length $ findFree (x:args) body) /= 0
+    L5Lambda args body -> if (length $ findFreeNonDuplicates (x:args) body) /= 0
                              then normalLetRec
                              else do
                                 fun_lab <- newLab
@@ -251,6 +251,8 @@ singleSub f subF e1 = f (subF e1)
 doubleSub f subF e1 e2 = f (subF e1) (subF e2)
 tripleSub f subF e1 e2 e3 = f (subF e1) (subF e2) (subF e3)
 
+findFreeNonDuplicates :: [L5X] -> L5E -> [L5X]
+findFreeNonDuplicates bound = nub . findFree bound
 
 findFree :: [L5X] -> L5E -> [L5X]
 findFree bound (L5Lambda args e) = findFree (union bound args) e
