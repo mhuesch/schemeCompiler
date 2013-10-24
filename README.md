@@ -1,5 +1,6 @@
 Compiles the following language (L5) to assembly & generates executables
 
+```
 e ::= (lambda (x ...) e)
     | x
     | (let ([x e]) e)
@@ -21,3 +22,4 @@ prim ::= biop
 
 biop ::= + | - | * | < | <= | =
 pred ::= number? | a?
+```
