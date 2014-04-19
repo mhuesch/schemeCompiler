@@ -23,20 +23,24 @@ data CountFunState = CountFunState { xCount :: Int
                                    , labCount :: Int
                                    , generatedFuns :: [L4Function]
                                    }
+startCFS :: CountFunState
 startCFS = CountFunState 0 0 []
 
 
 type CFS a = ReaderT (M.Map L5X (L4Label,[L5X])) (StateT CountFunState Identity) a
+runCFS :: s -> r -> ReaderT r (StateT s Identity) a -> (a, s)
 runCFS st env comp = runIdentity (runStateT (runReaderT comp env) st)
 
 
 {- Stateful functions -}
+new4X :: CFS L4X
 new4X = liftM prefix4X getIncXCount
 
 prefix4X :: Int -> L4X
 prefix4X n = L4X $ "x_" ++ show n
 
 --
+new5X :: CFS L5X
 new5X = liftM prefix5X getIncXCount
 
 prefix5X :: Int -> L5X
@@ -51,6 +55,7 @@ getIncXCount = do
 
 
 --
+newLab :: CFS L4Label
 newLab = liftM prefixLab getIncLabCount
 
 prefixLab :: Int -> L4Label
@@ -80,7 +85,6 @@ unpackLets tup_name xs = foldl (\ acc (x,idx) -> acc . (L4Let x (L4Aref (L4Ex tu
 compileE :: L5E -> CFS L4E
 compileE (L5Lambda xs e) = do
     env <- ask
-    fun_lab <- newLab
     e_c <- compileE e
     let freeXs = map compileX $ (findFreeNonDuplicates xs e) \\ M.keys env
         compiledArgs = (map compileX xs)
@@ -92,15 +96,15 @@ compileE (L5Lambda xs e) = do
                       then unpackLets extra_args (tail compiledArgs) $ e_c
                       else e_c
         vars_name = L4X "vars"
-        fun = L4Function fun_lab fun_args (unpackLets vars_name freeXs $ fun_body)
-    addFun fun
+    fun_lab <- newLab
+    addFun $ L4Function fun_lab fun_args (unpackLets vars_name freeXs $ fun_body)
     return . L4MakeClosure fun_lab . L4NewTuple $ map L4Ex freeXs
 
 compileE (L5Ex x) = do
     env <- ask
     case M.lookup x env of
         Nothing -> return $ L4Ex (compileX x)
-        Just (fun_lab,args) -> compileE (L5Lambda args (L5Apply (L5Ex x) (map L5Ex args)))
+        Just (_,args) -> compileE (L5Lambda args (L5Apply (L5Ex x) (map L5Ex args)))
 
 compileE (L5Let x e1 e2) = do
     [e1_c, e2_c] <- compileEs [e1,e2]
@@ -213,18 +217,20 @@ compileE (L5Primitive p) = case p of
 compileE (L5Enum n) = return $ L4Enum n
 
 
-
-oneArityLambda p = let a1 = (L5X "x")
-                   in compileE (L5Lambda [a1] (L5Apply (L5Primitive p) (map L5Ex [a1])))
-twoArityLambda p = let a1 = (L5X "x")
-                       a2 = (L5X "y")
-                   in compileE (L5Lambda [a1,a2] (L5Apply (L5Primitive p) (map L5Ex [a1,a2])))
-threeArityLambda p = let a1 = (L5X "x")
-                         a2 = (L5X "y")
-                         a3 = (L5X "z")
-                     in compileE (L5Lambda [a1,a2,a3] (L5Apply (L5Primitive p) (map L5Ex [a1,a2,a3])))
+compileEs :: [L5E] -> CFS [L4E]
+compileEs = mapM compileE
 
 
+-- Lambdas
+genericArityLambda :: [L5X] -> L5prim -> CFS L4E
+genericArityLambda as p = compileE (L5Lambda as (L5Apply (L5Primitive p) (map L5Ex as)))
+--
+oneArityLambda :: L5prim -> CFS L4E
+oneArityLambda = genericArityLambda [(L5X "x")]
+twoArityLambda :: L5prim -> CFS L4E
+twoArityLambda = genericArityLambda [(L5X "x"), (L5X "y")]
+threeArityLambda :: L5prim -> CFS L4E
+threeArityLambda = genericArityLambda [(L5X "x"), (L5X "y"), (L5X "z")]
 
 
 
@@ -235,7 +241,7 @@ substituteE t r e@(L5Lambda xs body) = if t `elem` xs
 substituteE t r e@(L5Ex x) = if x == t
                                 then r
                                 else e
-substituteE t r e@(L5Let x e1 e2) = if x == t
+substituteE t r (L5Let x e1 e2) = if x == t
                                        then singleSub (\ v -> L5Let x v e2) (substituteE t r) e1
                                        else doubleSub (L5Let x) (substituteE t r) e1 e2
 substituteE t r e@(L5LetRec x e1 e2) = if x == t
@@ -245,10 +251,13 @@ substituteE t r (L5If e1 e2 e3) = tripleSub L5If (substituteE t r) e1 e2 e3
 substituteE t r (L5NewTuple es) = L5NewTuple $ map (substituteE t r) es
 substituteE t r (L5Begin e1 e2) = doubleSub L5Begin (substituteE t r) e1 e2
 substituteE t r (L5Apply f as) = L5Apply (substituteE t r f) $ map (substituteE t r) as
-substituteE t r e = e
+substituteE _ _ e = e
 
+singleSub ::  (t1 -> t) -> (t2 -> t1) -> t2 -> t
 singleSub f subF e1 = f (subF e1)
+doubleSub ::  (t1 -> t1 -> t) -> (t2 -> t1) -> t2 -> t2 -> t
 doubleSub f subF e1 e2 = f (subF e1) (subF e2)
+tripleSub :: (t1 -> t1 -> t1 -> t) -> (t2 -> t1) -> t2 -> t2 -> t2 -> t
 tripleSub f subF e1 e2 e3 = f (subF e1) (subF e2) (subF e3)
 
 findFreeNonDuplicates :: [L5X] -> L5E -> [L5X]
@@ -264,10 +273,8 @@ findFree bound (L5If e1 e2 e3) = concatMap (findFree bound) [e1,e2,e3]
 findFree bound (L5NewTuple es) = concatMap (findFree bound) es
 findFree bound (L5Begin e1 e2) = concatMap (findFree bound) [e1,e2]
 findFree bound (L5Apply f as) = concatMap (findFree bound) (f:as)
-findFree bound _ = []
+findFree _ _ = []
 
-compileEs :: [L5E] -> CFS [L4E]
-compileEs = mapM compileE
 
 
 compileBiopHead :: L5biop -> L4biop
@@ -287,7 +294,7 @@ compileX :: L5X -> L4X
 compileX (L5X name) = L4X name
 
 
-{- Rename let-bound variables -}
+-- Rename let-bound variables
 renamePass :: M.Map L5X L5X -> L5E -> CFS L5E
 renamePass env (L5Lambda xs e) = liftM (L5Lambda xs) (renamePass newEnv e)
     where
@@ -326,7 +333,7 @@ renamePass env (L5Apply f as) = do
     (f_r:as_r) <- mapM (renamePass env) (f:as)
     return $ L5Apply f_r as_r
 
-renamePass env e = return e
+renamePass _ e = return e
 
 
 

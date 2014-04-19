@@ -13,14 +13,14 @@ import L5ToBinary.Compile
 
 main = do
     args <- getArgs
-    when (length args == 0) $ do
-        putStrLn "usage: filename"
+    when (length args /= 1) $ do
+        putStrLn "usage: filename-to-compile"
         exitFailure
     runtimeOExists <- doesFileExist "runtime.o"
     when (not runtimeOExists) $ do
         putStrLn "No runtime.o. Exiting."
         exitFailure
-    result <- liftM readProg $ readFile (args !! 0)
+    result <- liftM readProg $ readFile (head args)
     case result of
         Failed err -> putStrLn err
         Ok p -> case translate p of
