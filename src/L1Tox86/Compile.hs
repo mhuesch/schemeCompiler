@@ -3,12 +3,12 @@ module L1Tox86.Compile where
 
 import Control.Monad
 import Control.Monad.State
-import Control.Monad.Error
+import Control.Monad.Error()
 
 import L1.Grammar
 
 generateAssembly :: Program -> String
-generateAssembly p = fst $ runState (assembleProgram p) 0
+generateAssembly p = evalState (assembleProgram p) 0
 
 
 assembleProgram :: Program -> State Int String
@@ -39,59 +39,83 @@ assembleInstruction (Call u) = do
     put $ count + 1
     return $ "pushl $" ++ newlabel ++ "\npushl %ebp\nmovl %esp, %ebp\njmp " ++ assembleU u ++ "\n" ++ newlabel ++ ":\n"
 
-
 -- Arith op
-assembleInstruction (Arith r Add t) = return $ "addl " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (Arith r Sub t) = return $ "subl " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (Arith r Mult t) = return $ "imull " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (Arith r And t) = return $ "and " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (Arith r aop t) = return $ aop_c ++ " " ++ assembleT t ++ ", " ++ assembleReg r ++ "\n"
+  where
+    aop_c = case aop of
+              Add -> "addl"
+              Sub -> "subl"
+              Mult -> "imull"
+              And -> "and"
 
 -- Shift op
-assembleInstruction (ShiftSX r1 ShiftLeft r2) = return $ "sall %cl, " ++ assembleReg r1 ++ "\n"
-assembleInstruction (ShiftSX r1 ShiftRight r2) = return $ "sarl %cl, " ++ assembleReg r1 ++ "\n"
-assembleInstruction (ShiftNum r ShiftLeft n) = return $ "sall " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (ShiftNum r ShiftRight n) = return $ "sarl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (ShiftSX r1 shift _) = return $ (compileShift shift) ++ " %cl, " ++ assembleReg r1 ++ "\n"
+assembleInstruction (ShiftNum r shift n) = return $ (compileShift shift) ++ " " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n"
 
 -- SaveCmp
 -- num - num
-assembleInstruction (SaveCmp r (Tnum n1) LessThan (Tnum n2)) = return $ "movl " ++ assembleCompare (n1 < n2) ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Tnum n1) LessThanEqual (Tnum n2)) = return $ "movl " ++ assembleCompare (n1 <= n2) ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Tnum n1) Equal (Tnum n2)) = return $ "movl " ++ assembleCompare (n1 == n2) ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n1) cmp (Tnum n2)) = return $ "movl " ++ assembleCompare (n1 `cmpOp` n2) ++ ", " ++ assembleReg r ++ "\n"
+  where
+    cmpOp = case cmp of
+              LessThan -> (<)
+              LessThanEqual -> (<=)
+              Equal -> (==)
 -- reg - reg
-assembleInstruction (SaveCmp r (Treg r2) LessThan (Treg r3)) = return $ "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsetl " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Treg r2) LessThanEqual (Treg r3)) = return $ "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsetle " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Treg r2) Equal (Treg r3)) = return $ "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) cmp (Treg r3)) = return $ "cmpl " ++ assembleReg r3 ++ ", " ++ assembleReg r2 ++ "\n" ++ setType ++ " " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+  where
+    setType = case cmp of
+                LessThan -> "setl"
+                LessThanEqual -> "setle"
+                Equal -> "sete"
 -- num - reg
-assembleInstruction (SaveCmp r (Tnum n) LessThan (Treg r2)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetg " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Tnum n) LessThanEqual (Treg r2)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetge " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Tnum n) Equal (Treg r2)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Tnum n) cmp (Treg r2)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\n" ++ setType ++ " " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+  where
+    setType = case cmp of
+                LessThan -> "setg"
+                LessThanEqual -> "setge"
+                Equal -> "sete"
 -- reg - num
-assembleInstruction (SaveCmp r (Treg r2) LessThan (Tnum n)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetl " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Treg r2) LessThanEqual (Tnum n)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsetle " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
-assembleInstruction (SaveCmp r (Treg r2) Equal (Tnum n)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\nsete " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+assembleInstruction (SaveCmp r (Treg r2) cmp (Tnum n)) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r2 ++ "\n" ++ setType ++ " " ++ reg8Bit r ++ "\nmovzbl " ++ reg8Bit r ++ ", " ++ assembleReg r ++ "\n"
+  where
+    setType = case cmp of
+                LessThan -> "setl"
+                LessThanEqual -> "setle"
+                Equal -> "sete"
 
 -- Cjump
 -- reg - reg
-assembleInstruction (Cjump (Treg r1) LessThan (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r1) LessThanEqual (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r1) Equal (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r1) cmp (Treg r2) l1 l2) = return $ "cmpl " ++ assembleReg r2 ++ ", " ++ assembleReg r1 ++ "\n" ++ jmpType ++ " " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+  where
+    jmpType = case cmp of
+                LessThan -> "jl"
+                LessThanEqual -> "jle"
+                Equal -> "je"
 -- reg - constant
-assembleInstruction (Cjump (Treg r) LessThan (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njl " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r) LessThanEqual (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njle " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Treg r) Equal (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Treg r) cmp (Tnum n) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n" ++ jmpType ++ " " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+  where
+    jmpType = case cmp of
+                LessThan -> "jl"
+                LessThanEqual -> "jle"
+                Equal -> "je"
 -- constant - reg
-assembleInstruction (Cjump (Tnum n) LessThan (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njg " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Tnum n) LessThanEqual (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\njge " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
-assembleInstruction (Cjump (Tnum n) Equal (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\nje " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+assembleInstruction (Cjump (Tnum n) cmp (Treg r) l1 l2) = return $ "cmpl " ++ assembleConstant n ++ ", " ++ assembleReg r ++ "\n" ++ jmpType ++ " " ++ underscoreLabel l1 ++ "\njmp " ++ underscoreLabel l2 ++ "\n"
+  where
+    jmpType = case cmp of
+                LessThan -> "jg"
+                LessThanEqual -> "jge"
+                Equal -> "je"
 -- constant - constant
-assembleInstruction (Cjump (Tnum n1) LessThan (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 < n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
-assembleInstruction (Cjump (Tnum n1) LessThanEqual (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 <= n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
-assembleInstruction (Cjump (Tnum n1) Equal (Tnum n2) l1 l2) = return $ "jmp " ++ (if (n1 == n2) then underscoreLabel l1 else underscoreLabel l2) ++ "\n"
+assembleInstruction (Cjump (Tnum n1) cmp (Tnum n2) l1 l2) = return $ "jmp " ++ underscoreLabel (if (n1 `cmpOp` n2) then l1 else l2) ++ "\n"
+  where
+    cmpOp = case cmp of
+              LessThan -> (<)
+              LessThanEqual -> (<=)
+              Equal -> (==)
 
 assembleInstruction (ILab label) = return $ colonLabel label ++ "\n"
 assembleInstruction (Goto label) = return $ "jmp " ++ underscoreLabel label ++ "\n"
 assembleInstruction (TailCall u) = return $ "movl %ebp, %esp\n    jmp " ++ assembleU u ++ "\n"
-assembleInstruction (Return) = return $ "movl %ebp, %esp\n    pop %ebp\n    ret\n"
+assembleInstruction (Return) = return "movl %ebp, %esp\n    pop %ebp\n    ret\n"
 assembleInstruction (Print t) = return $ "pushl " ++ assembleT t ++ "\ncall print\naddl $4, %esp\n"
 assembleInstruction (Allocate t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall allocate\n" ++ "addl $8,%esp\n"
 assembleInstruction (ArrayError t1 t2) = return $ "pushl " ++ assembleT t2 ++ "\npushl " ++ assembleT t1 ++ "\ncall print_error\n" ++ "addl $8,%esp\n"
@@ -103,9 +127,7 @@ reg8Bit (EDX) = "%dl"
 reg8Bit (EBX) = "%bl"
 
 assembleCompare :: Bool -> String
-assembleCompare test = if test
-                          then assembleConstant 1
-                          else assembleConstant 0
+assembleCompare test = assembleConstant (if test then 1 else 0)
 
 assembleReg :: Reg -> String
 assembleReg (EAX) = "%eax"
@@ -116,6 +138,10 @@ assembleReg (EBP) = "%ebp"
 assembleReg (ESP) = "%esp"
 assembleReg (EDX) = "%edx"
 assembleReg (EBX) = "%ebx"
+
+compileShift :: SOP -> String
+compileShift ShiftLeft = "sall"
+compileShift ShiftRight = "sarl"
 
 assembleConstant :: Int -> String
 assembleConstant n = "$" ++ show n
