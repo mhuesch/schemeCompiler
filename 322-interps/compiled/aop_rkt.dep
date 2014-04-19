@@ -1,1 +1,1 @@
-("5.3.3" ("743b0c7aacbce002791b949e05cf1b57c6a308ea" . "6eee28e07da1ee596d94b56b62490a8151da4f2f") (collects #"scheme" #"base.rkt") (collects #"scheme" #"base" #"lang" #"reader.rkt"))
+("6.0" ("41a10254613c47a32af18a87a5bf83707d8e65af" . "851fa7c221cfc15553e62886f67b744dfbbc6a39") (collects #"scheme" #"base.rkt") (collects #"scheme" #"runtime-config.rkt"))
