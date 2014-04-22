@@ -139,7 +139,7 @@ xLowByte (R14)     = "%r14b"
 xLowByte (R15)     = "%r15b"
 
 assembleCompare :: Bool -> String
-assembleCompare test = assembleN . Num $ (if test then 1 else 0)
+assembleCompare test = assembleN . Num . PosNegInteger $ (if test then "1" else "0")
 
 assembleX :: X -> String
 assembleX (Xax RAX) = "%rax"
@@ -164,10 +164,10 @@ compileShift ShiftLeft = "salq"
 compileShift ShiftRight = "sarq"
 
 assembleN :: N -> String
-assembleN (Num int) = "$" ++ show int
+assembleN (Num (PosNegInteger i)) = "$" ++ i
 
 showN :: N -> String
-showN (Num int) = show int
+showN (Num (PosNegInteger i)) = i
 
 assembleS :: S -> String
 assembleS (Sx x) = assembleX x

@@ -85,6 +85,7 @@ Equal.         CMP ::= "="  ;
 
 
 token Label ':' (letter |  '_') (letter | digit | '_')* ;
+token PosNegInteger '-'? digit+ ;
 
-Num. N ::= Integer ;
+Num. N ::= PosNegInteger ;
 
