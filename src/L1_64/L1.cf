@@ -1,0 +1,90 @@
+comment ";" ;
+
+
+Prog. Program ::= "(" "(" [Instruction] ")"
+                   [Function] ")" ;
+
+terminator Instruction "" ; 
+terminator Function "" ;
+
+
+Fun. Function ::= "(" Label [Instruction] ")" ;
+
+
+IAssign.     Instruction ::= "(" X "<-" S ")"                 ;
+IReadMem.    Instruction ::= "(" X "<-" "(" "mem" X N ")" ")" ;
+IWriteMem.   Instruction ::= "(" "(" "mem" X N ")" "<-" S ")" ;
+
+IArith.      Instruction ::= "(" X AOP T ")"        ;
+IShiftCX.    Instruction ::= "(" X SOP CX ")"       ;
+IShiftN.     Instruction ::= "(" X SOP N  ")"       ;
+ISaveCmp.    Instruction ::= "(" X "<-" T CMP T ")" ;
+
+ILabel.      Instruction ::= Label                               ;
+IGoto.       Instruction ::= "(" "goto" Label ")"                ;
+ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
+
+ICall.       Instruction ::= "(" "call" U ")"      ;
+ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
+IReturn.     Instruction ::= "(" "return" ")"      ;
+
+IPrint.      Instruction ::= "(" X "<-" "(" "print" T ")" ")"         ;
+IAllocate.   Instruction ::= "(" X "<-" "(" "allocate" T T ")" ")"    ;
+IArrayError. Instruction ::= "(" X "<-" "(" "array-error" T T ")" ")" ;
+
+coercions Instruction 1 ;
+
+
+Sx.   S ::= X     ;
+Snum. S ::= N     ;
+Slab. S ::= Label ;
+
+
+Ux.   U ::= X     ;
+Ulab. U ::= Label ;
+
+
+Tx.   T ::= X ;
+Tnum. T ::= N ;
+
+
+RAX. AX ::= "rax" ;
+RCX. CX ::= "rcx" ;
+
+Xax. X ::= AX     ;
+Xcx. X ::= CX     ;
+RBX. X ::= "rbx"  ;
+RDX. X ::= "rdx"  ;
+RSI. X ::= "rsi"  ;
+RDI. X ::= "rdi"  ;
+RBP. X ::= "rbp"  ;
+RSP. X ::= "rsp"  ;
+R8.  X ::= "r8"   ;
+R9.  X ::= "r9"   ;
+R10. X ::= "r10"  ;
+R11. X ::= "r11"  ;
+R12. X ::= "r12"  ;
+R13. X ::= "r13"  ;
+R14. X ::= "r14"  ;
+R15. X ::= "r15"  ;
+
+
+Add.  AOP ::= "+=" ;
+Sub.  AOP ::= "-=" ;
+Mult. AOP ::= "*=" ;
+And.  AOP ::= "&=" ;
+
+
+ShiftLeft.  SOP ::= "<<=" ;
+ShiftRight. SOP ::= ">>=" ;
+
+
+LessThan.      CMP ::= "<"  ;
+LessThanEqual. CMP ::= "<=" ;
+Equal.         CMP ::= "="  ;
+
+
+token Label ':' (letter |  '_') (letter | digit | '_')* ;
+
+Num. N ::= Integer ;
+
