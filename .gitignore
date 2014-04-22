@@ -3,6 +3,9 @@
 *.hi
 *.o
 *.S
+*.L1
+*.bak
+*.log
 
 a.out
 L1c
