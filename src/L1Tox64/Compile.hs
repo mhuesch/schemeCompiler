@@ -54,10 +54,10 @@ assembleInstruction (IShiftN x shift n) = return $ (compileShift shift) ++ " " +
 -- num - num
 assembleInstruction (ISaveCmp x (Tnum n1) cmp (Tnum n2)) = return $ "movq " ++ assembleCompare (n1 `cmpOp` n2) ++ ", " ++ assembleX x ++ "\n"
   where
-    cmpOp = case cmp of
-              LessThan -> (<)
-              LessThanEqual -> (<=)
-              Equal -> (==)
+    cmpOp = compareN $ case cmp of
+                         LessThan -> (<)
+                         LessThanEqual -> (<=)
+                         Equal -> (==)
 -- reg - reg
 assembleInstruction (ISaveCmp x (Tx x2) cmp (Tx x3)) = return $ "cmpq " ++ assembleX x3 ++ ", " ++ assembleX x2 ++ "\n" ++ setType ++ " " ++ xLowByte x ++ "\nmovzbq " ++ xLowByte x ++ ", " ++ assembleX x ++ "\n"
   where
@@ -105,10 +105,10 @@ assembleInstruction (ICjump (Tnum n) cmp (Tx x) l1 l2) = return $ "cmpq " ++ ass
 -- constant - constant
 assembleInstruction (ICjump (Tnum n1) cmp (Tnum n2) l1 l2) = return $ "jmp " ++ inlineLabel (if (n1 `cmpOp` n2) then l1 else l2) ++ "\n"
   where
-    cmpOp = case cmp of
-              LessThan -> (<)
-              LessThanEqual -> (<=)
-              Equal -> (==)
+    cmpOp = compareN $ case cmp of
+                         LessThan -> (<)
+                         LessThanEqual -> (<=)
+                         Equal -> (==)
 
 assembleInstruction (ILabel label) = return $ standaloneLabel label ++ "\n"
 
@@ -181,6 +181,11 @@ assembleN (Num (PosNegInteger i)) = "$" ++ i
 
 showN :: N -> String
 showN (Num (PosNegInteger i)) = i
+
+compareN :: (Integer -> Integer -> Bool) -> N -> N -> Bool
+compareN cmp n1 n2 = (nToInteger n1) `cmp` (nToInteger n2)
+  where
+    nToInteger (Num (PosNegInteger i)) = (read i :: Integer)
 
 assembleS :: S -> String
 assembleS (Sx x) = assembleX x
