@@ -4,7 +4,7 @@ comment ";" ;
 Prog. Program ::= "(" "(" [Instruction] ")"
                    [Function] ")" ;
 
-terminator Instruction "" ; 
+terminator Instruction "" ;
 terminator Function "" ;
 
 
@@ -24,7 +24,7 @@ ILabel.      Instruction ::= Label                               ;
 IGoto.       Instruction ::= "(" "goto" Label ")"                ;
 ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
 
-ICall.       Instruction ::= "(" "call" U ")"      ;
+ICall.       Instruction ::= "(" "call" N U ")"      ;
 ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
 IReturn.     Instruction ::= "(" "return" ")"      ;
 

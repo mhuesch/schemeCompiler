@@ -29,19 +29,13 @@ assembleFunction (Fun label body) = do
     where
         funLabel = (standaloneLabel label) ++ "\n"
 
+
 assembleInstruction :: Instruction -> State Int String
 assembleInstruction (IAssign x s) = return $ "movq " ++ assembleS s ++ ", " ++ assembleX x ++ "\n"
+
 assembleInstruction (IReadMem x1 x2 n) = return $ "movq " ++ showN n ++ "(" ++ assembleX x2 ++ "), " ++ assembleX x1 ++ "\n"
+
 assembleInstruction (IWriteMem x n s) = return $ "movq " ++ assembleS s ++ ", " ++ showN n ++ "(" ++ assembleX x ++ ")\n"
-assembleInstruction (ICall u) = do
-    count <- get
-    let newlabel = "_fun_ret_" ++ show count
-    put $ count + 1
-    return $ concat ["pushq $" ++ newlabel ++ "\n"
-                    ,"pushq " ++ assembleX RBP ++ "\n"
-                    ,"movq " ++ assembleX RSP ++ ", " ++ assembleX RBP ++ "\n"
-                    ,"jmp " ++ assembleU u ++ "\n"
-                    ,newlabel ++ ":\n"]
 
 -- Arith op
 assembleInstruction (IArith x aop t) = return $ aop_c ++ " " ++ assembleT t ++ ", " ++ assembleX x ++ "\n"
@@ -117,12 +111,27 @@ assembleInstruction (ICjump (Tnum n1) cmp (Tnum n2) l1 l2) = return $ "jmp " ++ 
               Equal -> (==)
 
 assembleInstruction (ILabel label) = return $ standaloneLabel label ++ "\n"
+
 assembleInstruction (IGoto label) = return $ "jmp " ++ inlineLabel label ++ "\n"
-assembleInstruction (ITailCall u) = return $ "movq " ++ assembleX RBP ++ ", " ++ assembleX RSP ++ "\njmp " ++ assembleU u ++ "\n"
-assembleInstruction (IReturn) = return $ "movq " ++ assembleX RBP ++ ", " ++ assembleX RSP ++ "\npop " ++ assembleX RBP ++ "\nret\n"
+
+assembleInstruction (ICall n u) = do
+    count <- get
+    let newlabel = "_fun_ret_" ++ show count
+    put $ count + 1
+    return $ concat ["movq $" ++ newlabel ++ ", " ++ showN n ++ "(" ++ assembleX RSP ++ ")\n"
+                    ,"jmp " ++ assembleU u ++ "\n"
+                    ,newlabel ++ ":\n"]
+
+assembleInstruction (ITailCall u) = return $ "jmp " ++ assembleU u ++ "\n"
+
+assembleInstruction (IReturn) = return "ret\n"
+
 assembleInstruction (IPrint _ t) = return $ "movq " ++ assembleT t ++ ", " ++ assembleX RDI ++ "\ncall print\n"
+
 assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX RDI ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX RSI ++ "\ncall allocate\n"
+
 assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX RDI ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX RSI ++ "\ncall print_error\n"
+
 
 xLowByte :: X -> String
 xLowByte (Xax RAX) = "%al"
