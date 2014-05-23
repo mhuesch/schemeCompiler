@@ -42,16 +42,16 @@ colorComp = do
         f _ = []
         vars = concatMap f $ keys g
     foldM attemptColor coloredRegs vars
-    
+
 
 attemptColor :: Coloring -> L2Var -> RMI Coloring
 attemptColor cs v = do
     g <- ask
     let fixedNeighbors = filterNeighbors (L2Xvar v) FixedEdge g
-        prohibitedColors = catMaybes $ map (lookupColor cs) fixedNeighbors
+        prohibitedColors = mapMaybe (lookupColor cs) fixedNeighbors
     case colors \\ prohibitedColors of
-        [] -> fail "no colors"
-        x:xs -> return $ addColor (L2Xvar v) x cs
+        []  -> fail "no colors"
+        x:_ -> return $ addColor (L2Xvar v) x cs
 
 
 {- Register stuff -}
@@ -65,12 +65,12 @@ colors = [L2EBX, L2ECX, L2EDX, L2EDI, L2ESI, L2EAX]
 {- Display -}
 displayColors :: Maybe Coloring -> String
 displayColors Nothing = "#f"
-displayColors (Just xs) = "(" ++ (concat . intersperse "\n" . sort . map displayVarColor . getVarColors $ xs) ++ ")"
+displayColors (Just xs) = "(" ++ (intercalate "\n" . sort . map displayVarColor . getVarColors $ xs) ++ ")"
 
 getVarColors :: Coloring -> [(L2Var,L2Reg)]
 getVarColors = concatMap f
     where
-        f ((L2Xvar v),r) = [(v,r)]
+        f (L2Xvar v, r) = [(v,r)]
         f _ = []
 
 displayVarColor :: (L2Var,L2Reg) -> String
