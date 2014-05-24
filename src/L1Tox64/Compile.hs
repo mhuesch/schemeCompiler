@@ -2,43 +2,60 @@ module L1Tox64.Compile where
 
 
 import Control.Monad
-import Control.Monad.State
-import Control.Monad.Error()
+import Control.Monad.Reader
+import Control.Monad.Identity
+import Data.List
 
 import L1_64.AbsL1
 
-generateAssembly :: Program -> String
-generateAssembly p = evalState (assembleProgram p) 0
 
+assembleProgram :: Program -> String
+assembleProgram (Prog mainLabel funs) = fileHeader
+                                        ++ mainPrefix
+                                        ++ "movq $ret_main, -8(%rsp)\n"
+                                        ++ ("jmp " ++ inlineLabel mainLabel ++ "\n")
+                                        ++ "ret_main:\n"
+                                        ++ mainSuffix
+                                        ++ funAssem
+                                        ++ fileFooter
+  where
+    funAssem = concatMap assembleFunction funs
 
-assembleProgram :: Program -> State Int String
-assembleProgram (Prog mainBody funs) = do
-    mainAssem <- liftM concat $ mapM assembleInstruction mainBody
-    funAssem <- liftM concat $ mapM assembleFunction funs
-    return $ fileHeader
-          ++ mainPrefix
-          ++ mainAssem
-          ++ mainSuffix
-          ++ funAssem
-          ++ fileFooter
+data FunctionInfo = FunctionInfo { arity :: Integer
+                                 , spills :: Integer }
 
-assembleFunction :: Function -> State Int String
-assembleFunction (Fun label body) = do
-    bodyAssem <- liftM concat $ mapM assembleInstruction body
-    return $ funLabel ++ bodyAssem
+myFrameOffset :: FunctionInfo -> Integer
+myFrameOffset fi = 8 * count
+  where
+    ar = arity fi
+    sp = spills fi
+    count = 1 + sp + max 0 (ar - 6)
+
+myArgsSpillsOffset :: FunctionInfo -> Integer
+myArgsSpillsOffset fi = 8 * count
+  where
+    ar = arity fi
+    sp = spills fi
+    count = sp + max 0 (ar - 6)
+
+assembleFunction :: Function -> String
+assembleFunction (Fun label arity' spills' body) = intercalate "\n" [funLabel, rspAdjust, bodyAssem]
     where
-        funLabel = (standaloneLabel label) ++ "\n"
+        bodyAssem = runIdentity $ runReaderT (liftM concat $ mapM assembleInstruction body) fi
+        funLabel = standaloneLabel label
+        fi = FunctionInfo (nToInteger arity') (nToInteger spills')
+        rspAdjust = "subq " ++ assembleConstant (myFrameOffset fi) ++ ", %rsp"
 
 
-assembleInstruction :: Instruction -> State Int String
-assembleInstruction (IAssign x s) = return $ "movq " ++ assembleS s ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction :: Instruction -> ReaderT FunctionInfo Identity String
+assembleInstruction (IAssign w s) = return $ "movq " ++ assembleS s ++ ", " ++ assembleX (Xw w) ++ "\n"
 
-assembleInstruction (IReadMem x1 x2 n) = return $ "movq " ++ showN n ++ "(" ++ assembleX x2 ++ "), " ++ assembleX x1 ++ "\n"
+assembleInstruction (IReadMem w x n) = return $ "movq " ++ showN n ++ "(" ++ assembleX x ++ "), " ++ assembleX (Xw w) ++ "\n"
 
 assembleInstruction (IWriteMem x n s) = return $ "movq " ++ assembleS s ++ ", " ++ showN n ++ "(" ++ assembleX x ++ ")\n"
 
 -- Arith op
-assembleInstruction (IArith x aop t) = return $ aop_c ++ " " ++ assembleT t ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (IArith w aop t) = return $ aop_c ++ " " ++ assembleT t ++ ", " ++ assembleX (Xw w) ++ "\n"
   where
     aop_c = case aop of
               Add -> "addq"
@@ -47,33 +64,39 @@ assembleInstruction (IArith x aop t) = return $ aop_c ++ " " ++ assembleT t ++ "
               And -> "andq"
 
 -- Shift op
-assembleInstruction (IShiftCX x1 shift cx) = return $ (compileShift shift) ++ " " ++ xLowByte (Xcx cx) ++ ", " ++ assembleX x1 ++ "\n"
-assembleInstruction (IShiftN x shift n) = return $ (compileShift shift) ++ " " ++ assembleN n ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (IShiftCX w shift cx) = return $ (compileShift shift) ++ " " ++ xLowByte (Xw (Wcx cx)) ++ ", " ++ assembleX (Xw w) ++ "\n"
+assembleInstruction (IShiftN w shift n) = return $ (compileShift shift) ++ " " ++ assembleN n ++ ", " ++ assembleX (Xw w) ++ "\n"
 
 -- SaveCmp
 -- num - num
-assembleInstruction (ISaveCmp x (Tnum n1) cmp (Tnum n2)) = return $ "movq " ++ assembleCompare (n1 `cmpOp` n2) ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (ISaveCmp w (Tnum n1) cmp (Tnum n2)) = return $ "movq " ++ assembleCompare (n1 `cmpOp` n2) ++ ", " ++ assembleX (Xw w) ++ "\n"
   where
     cmpOp = compareN $ case cmp of
                          LessThan -> (<)
                          LessThanEqual -> (<=)
                          Equal -> (==)
 -- reg - reg
-assembleInstruction (ISaveCmp x (Tx x2) cmp (Tx x3)) = return $ "cmpq " ++ assembleX x3 ++ ", " ++ assembleX x2 ++ "\n" ++ setType ++ " " ++ xLowByte x ++ "\nmovzbq " ++ xLowByte x ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (ISaveCmp w (Tx x2) cmp (Tx x3)) = return $ intercalate "\n" ["cmpq " ++ assembleX x3 ++ ", " ++ assembleX x2
+                                                                                 ,setType ++ " " ++ xLowByte (Xw w)
+                                                                                 ,"movzbq " ++ xLowByte (Xw w) ++ ", " ++ assembleX (Xw w) ++ "\n"]
   where
     setType = case cmp of
                 LessThan -> "setl"
                 LessThanEqual -> "setle"
                 Equal -> "sete"
 -- num - reg
-assembleInstruction (ISaveCmp x (Tnum n) cmp (Tx x2)) = return $ "cmpq " ++ assembleN n ++ ", " ++ assembleX x2 ++ "\n" ++ setType ++ " " ++ xLowByte x ++ "\nmovzbq " ++ xLowByte x ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (ISaveCmp w (Tnum n) cmp (Tx x2)) = return $ intercalate "\n" ["cmpq " ++ assembleN n ++ ", " ++ assembleX x2
+                                                                                  ,setType ++ " " ++ xLowByte (Xw w)
+                                                                                  ,"movzbq " ++ xLowByte (Xw w) ++ ", " ++ assembleX (Xw w) ++ "\n"]
   where
     setType = case cmp of
                 LessThan -> "setg"
                 LessThanEqual -> "setge"
                 Equal -> "sete"
 -- reg - num
-assembleInstruction (ISaveCmp x (Tx x2) cmp (Tnum n)) = return $ "cmpq " ++ assembleN n ++ ", " ++ assembleX x2 ++ "\n" ++ setType ++ " " ++ xLowByte x ++ "\nmovzbq " ++ xLowByte x ++ ", " ++ assembleX x ++ "\n"
+assembleInstruction (ISaveCmp w (Tx x2) cmp (Tnum n)) = return $ intercalate "\n" ["cmpq " ++ assembleN n ++ ", " ++ assembleX x2
+                                                                                  ,setType ++ " " ++ xLowByte (Xw w)
+                                                                                  ,"movzbq " ++ xLowByte (Xw w) ++ ", " ++ assembleX (Xw w) ++ "\n"]
   where
     setType = case cmp of
                 LessThan -> "setl"
@@ -114,67 +137,70 @@ assembleInstruction (ILabel label) = return $ standaloneLabel label ++ "\n"
 
 assembleInstruction (IGoto label) = return $ "jmp " ++ inlineLabel label ++ "\n"
 
-assembleInstruction (ICall n u) = do
-    count <- get
-    let newlabel = "_fun_ret_" ++ show count
-    put $ count + 1
-    return $ concat ["movq $" ++ newlabel ++ ", " ++ showN n ++ "(" ++ assembleX RSP ++ ")\n"
-                    ,"jmp " ++ assembleU u ++ "\n"
-                    ,newlabel ++ ":\n"]
+assembleInstruction (ICall u) = return $ "jmp " ++ assembleU u ++ "\n"
 
-assembleInstruction (ITailCall u) = return $ "jmp " ++ assembleU u ++ "\n"
+assembleInstruction (ITailCall u) = do
+    offset <- asks myFrameOffset
+    return $ intercalate "\n" ["addq " ++ assembleConstant offset ++ ", %rsp"
+                              ,"jmp " ++ assembleU u ++ "\n"]
 
-assembleInstruction (IReturn) = return "ret\n"
+assembleInstruction (IReturn) = do
+    offset <- asks myArgsSpillsOffset
+    return $ intercalate "\n" ["addq " ++ assembleConstant offset ++ ", %rsp"
+                              ,"ret\n"]
 
-assembleInstruction (IPrint _ t) = return $ "movq " ++ assembleT t ++ ", " ++ assembleX RDI ++ "\ncall print\n"
+assembleInstruction (IPrint _ t) = return $ "movq " ++ assembleT t ++ ", " ++ assembleX (Xw RDI) ++ "\ncall print\n"
 
-assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX RDI ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX RSI ++ "\ncall allocate\n"
+assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RDI) ++ "\ncall allocate\n"
 
-assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX RDI ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX RSI ++ "\ncall print_error\n"
+assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RDI) ++ "\ncall print_error\n"
 
 
 xLowByte :: X -> String
-xLowByte (Xax RAX) = "%al"
-xLowByte (Xcx RCX) = "%cl"
-xLowByte (RDX)     = "%dl"
-xLowByte (RBX)     = "%bl"
-xLowByte (RSI)     = "%sil"
-xLowByte (RDI)     = "%dil"
-xLowByte (RBP)     = "%bpl"
-xLowByte (RSP)     = "%spl"
-xLowByte (R8)      = "%r8b"
-xLowByte (R9)      = "%r9b"
-xLowByte (R10)     = "%r10b"
-xLowByte (R11)     = "%r11b"
-xLowByte (R12)     = "%r12b"
-xLowByte (R13)     = "%r13b"
-xLowByte (R14)     = "%r14b"
-xLowByte (R15)     = "%r15b"
+xLowByte Xrsp = "%spl"
+xLowByte (Xw (Wcx RCX)) = "%cl"
+xLowByte (Xw RAX) = "%al"
+xLowByte (Xw RBX) = "%dl"
+xLowByte (Xw RDX) = "%bl"
+xLowByte (Xw RSI) = "%sil"
+xLowByte (Xw RDI) = "%dil"
+xLowByte (Xw RBP) = "%bpl"
+xLowByte (Xw R8)  = "%r8b"
+xLowByte (Xw R9)  = "%r9b"
+xLowByte (Xw R10) = "%r10b"
+xLowByte (Xw R11) = "%r11b"
+xLowByte (Xw R12) = "%r12b"
+xLowByte (Xw R13) = "%r13b"
+xLowByte (Xw R14) = "%r14b"
+xLowByte (Xw R15) = "%r15b"
 
 assembleCompare :: Bool -> String
 assembleCompare test = assembleN . Num . PosNegInteger $ (if test then "1" else "0")
 
 assembleX :: X -> String
-assembleX (Xax RAX) = "%rax"
-assembleX (Xcx RCX) = "%rcx"
-assembleX (RBX)     = "%rbx"
-assembleX (RDX)     = "%rdx"
-assembleX (RSI)     = "%rsi"
-assembleX (RDI)     = "%rdi"
-assembleX (RBP)     = "%rbp"
-assembleX (RSP)     = "%rsp"
-assembleX (R8)      = "%r8"
-assembleX (R9)      = "%r9"
-assembleX (R10)     = "%r10"
-assembleX (R11)     = "%r11"
-assembleX (R12)     = "%r12"
-assembleX (R13)     = "%r13"
-assembleX (R14)     = "%r14"
-assembleX (R15)     = "%r15"
+assembleX Xrsp = "%rsp"
+assembleX (Xw (Wcx RCX)) = "%rcx"
+assembleX (Xw RAX) = "%rax"
+assembleX (Xw RBX) = "%rbx"
+assembleX (Xw RDX) = "%rdx"
+assembleX (Xw RSI) = "%rsi"
+assembleX (Xw RDI) = "%rdi"
+assembleX (Xw RBP) = "%rbp"
+assembleX (Xw R8)  = "%r8"
+assembleX (Xw R9)  = "%r9"
+assembleX (Xw R10) = "%r10"
+assembleX (Xw R11) = "%r11"
+assembleX (Xw R12) = "%r12"
+assembleX (Xw R13) = "%r13"
+assembleX (Xw R14) = "%r14"
+assembleX (Xw R15) = "%r15"
 
 compileShift :: SOP -> String
 compileShift ShiftLeft = "salq"
 compileShift ShiftRight = "sarq"
+
+assembleConstant :: Integer -> String
+assembleConstant i = "$" ++ show i
 
 assembleN :: N -> String
 assembleN (Num (PosNegInteger i)) = "$" ++ i
@@ -184,8 +210,9 @@ showN (Num (PosNegInteger i)) = i
 
 compareN :: (Integer -> Integer -> Bool) -> N -> N -> Bool
 compareN cmp n1 n2 = (nToInteger n1) `cmp` (nToInteger n2)
-  where
-    nToInteger (Num (PosNegInteger i)) = (read i :: Integer)
+
+nToInteger :: N -> Integer
+nToInteger (Num (PosNegInteger i)) = (read i :: Integer)
 
 assembleS :: S -> String
 assembleS (Sx x) = assembleX x
@@ -213,10 +240,6 @@ fileHeader = "    .text\n"
           ++ "    .type   go, @function\n"
           ++ "go:\n"
 
-fileFooter :: String
-fileFooter = "    .size go, .-go\n"
-          ++ "    .section    .note.GNU-stack,\"\",@progbits\n"
-
 mainPrefix :: String
 mainPrefix = "pushq   %rbp\n"
           ++ "movq    %rsp, %rbp\n"
@@ -233,3 +256,8 @@ mainSuffix = "popq   %rbp\n"
           ++ "popq   %rbx\n"
           ++ "leave\n"
           ++ "ret\n"
+
+fileFooter :: String
+fileFooter = "    .size go, .-go\n"
+          ++ "    .section    .note.GNU-stack,\"\",@progbits\n"
+

@@ -27,7 +27,7 @@ main = do
                     putStrLn "Tokens:"
                     print ts
                     putStrLn s
-      Ok tree -> do writeFile "prog.S" (generateAssembly tree)
+      Ok tree -> do writeFile "prog.S" (assembleProgram tree)
                     rawSystem "as" ["--64", "-o", "prog.o", "prog.S"] >>= throwIfError
                     rawSystem "gcc" ["-m64", "-o", "a.out", "prog.o", "runtime.o"] >>= throwIfError
                     return ()
