@@ -1,38 +1,36 @@
 comment ";" ;
 
 
-Prog. Program ::= "(" "(" [Instruction] ")"
-                   [Function] ")" ;
+Prog. Program ::= "(" Label
+                      [Function] ")" ;
 
 terminator Instruction "" ;
 terminator Function "" ;
 
 
-Fun. Function ::= "(" Label [Instruction] ")" ;
+Fun. Function ::= "(" Label N N [Instruction] ")" ;
 
 
-IAssign.     Instruction ::= "(" X "<-" S ")"                 ;
-IReadMem.    Instruction ::= "(" X "<-" "(" "mem" X N ")" ")" ;
+IAssign.     Instruction ::= "(" W "<-" S ")"                 ;
+IReadMem.    Instruction ::= "(" W "<-" "(" "mem" X N ")" ")" ;
 IWriteMem.   Instruction ::= "(" "(" "mem" X N ")" "<-" S ")" ;
 
-IArith.      Instruction ::= "(" X AOP T ")"        ;
-IShiftCX.    Instruction ::= "(" X SOP CX ")"       ;
-IShiftN.     Instruction ::= "(" X SOP N  ")"       ;
-ISaveCmp.    Instruction ::= "(" X "<-" T CMP T ")" ;
+IArith.      Instruction ::= "(" W AOP T ")"        ;
+IShiftCX.    Instruction ::= "(" W SOP CX ")"       ;
+IShiftN.     Instruction ::= "(" W SOP N  ")"       ;
+ISaveCmp.    Instruction ::= "(" W "<-" T CMP T ")" ;
 
 ILabel.      Instruction ::= Label                               ;
 IGoto.       Instruction ::= "(" "goto" Label ")"                ;
 ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
 
-ICall.       Instruction ::= "(" "call" N U ")"      ;
+ICall.       Instruction ::= "(" "call" U ")"      ;
 ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
 IReturn.     Instruction ::= "(" "return" ")"      ;
 
-IPrint.      Instruction ::= "(" X "<-" "(" "print" T ")" ")"         ;
-IAllocate.   Instruction ::= "(" X "<-" "(" "allocate" T T ")" ")"    ;
-IArrayError. Instruction ::= "(" X "<-" "(" "array-error" T T ")" ")" ;
-
-coercions Instruction 1 ;
+IPrint.      Instruction ::= "(" W "<-" "(" "print" T ")" ")"         ;
+IAllocate.   Instruction ::= "(" W "<-" "(" "allocate" T T ")" ")"    ;
+IArrayError. Instruction ::= "(" W "<-" "(" "array-error" T T ")" ")" ;
 
 
 Sx.   S ::= X     ;
@@ -48,25 +46,27 @@ Tx.   T ::= X ;
 Tnum. T ::= N ;
 
 
-RAX. AX ::= "rax" ;
+Xw.   X ::= W     ;
+Xrsp. X ::= "rsp" ;
+
+
 RCX. CX ::= "rcx" ;
 
-Xax. X ::= AX     ;
-Xcx. X ::= CX     ;
-RBX. X ::= "rbx"  ;
-RDX. X ::= "rdx"  ;
-RSI. X ::= "rsi"  ;
-RDI. X ::= "rdi"  ;
-RBP. X ::= "rbp"  ;
-RSP. X ::= "rsp"  ;
-R8.  X ::= "r8"   ;
-R9.  X ::= "r9"   ;
-R10. X ::= "r10"  ;
-R11. X ::= "r11"  ;
-R12. X ::= "r12"  ;
-R13. X ::= "r13"  ;
-R14. X ::= "r14"  ;
-R15. X ::= "r15"  ;
+Wcx. W ::= CX     ;
+RAX. W ::= "rax"  ;
+RBX. W ::= "rbx"  ;
+RDX. W ::= "rdx"  ;
+RSI. W ::= "rsi"  ;
+RDI. W ::= "rdi"  ;
+RBP. W ::= "rbp"  ;
+R8.  W ::= "r8"   ;
+R9.  W ::= "r9"   ;
+R10. W ::= "r10"  ;
+R11. W ::= "r11"  ;
+R12. W ::= "r12"  ;
+R13. W ::= "r13"  ;
+R14. W ::= "r14"  ;
+R15. W ::= "r15"  ;
 
 
 Add.  AOP ::= "+=" ;
