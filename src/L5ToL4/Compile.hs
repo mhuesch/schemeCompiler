@@ -27,6 +27,8 @@ startCFS :: CountFunState
 startCFS = CountFunState 0 0 []
 
 
+-- Readers map goes from L5X's (that functions are bound to) to the
+-- corresponding L4 function label and the arguments of the function
 type CFS a = ReaderT (M.Map L5X (L4Label,[L5X])) (StateT CountFunState Identity) a
 runCFS :: s -> r -> ReaderT r (StateT s Identity) a -> (a, s)
 runCFS st env comp = runIdentity (runStateT (runReaderT comp env) st)
@@ -198,12 +200,14 @@ compileE (L5Apply f as) = case f of
     where genericApply = do
                 f_c <- compileE f
                 as_c <- compileEs as
-                let clos_proc = L4ClosureProc f_c
-                    clos_vars = L4ClosureVars f_c
+                clo_label <- new4X
+                let clo_let = L4Let clo_label f_c
+                    clos_proc = L4ClosureProc (L4Ex clo_label)
+                    clos_vars = L4ClosureVars (L4Ex clo_label)
                     fun_args = if length as > 2
                                   then [(head as_c), L4NewTuple (tail as_c)]
                                   else as_c
-                return $ L4Apply clos_proc (clos_vars:fun_args)
+                return $ clo_let $ L4Apply clos_proc (clos_vars:fun_args)
 
 compileE (L5Primitive p) = case p of
     L5Print -> oneArityLambda L5Print
