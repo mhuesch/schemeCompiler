@@ -7,8 +7,8 @@ import System.Cmd
 import System.Exit
 import System.Directory
 
-import L1_64.ParL1
-import L1_64.ErrM
+import L1.ParL1
+import L1.ErrM
 
 import L1Tox64.Compile
 
@@ -34,5 +34,5 @@ main = do
 
 throwIfError :: ExitCode -> IO ()
 throwIfError ExitSuccess = return ()
-throwIfError e@ExitFailure{} = exitWith e >> return ()
+throwIfError e@ExitFailure{} = void (exitWith e)
 
