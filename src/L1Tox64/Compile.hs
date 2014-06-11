@@ -151,9 +151,9 @@ assembleInstruction (IReturn) = do
 
 assembleInstruction (IPrint _ t) = return $ "movq " ++ assembleT t ++ ", " ++ assembleX (Xw RDI) ++ "\ncall print\n"
 
-assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RDI) ++ "\ncall allocate\n"
+assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RSI) ++ "\ncall allocate\n"
 
-assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RDI) ++ "\ncall print_error\n"
+assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RSI) ++ "\ncall print_error\n"
 
 
 xLowByte :: X -> String
