@@ -1,6 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
 module L5ToL4.Compile where
 
 
+import Control.Lens
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Reader
@@ -10,6 +12,12 @@ import qualified Data.Map as M
 import L5.Grammar
 import L4.Grammar
 
+data CountFunState = CountFunState { _xCount :: Int
+                                   , _labCount :: Int
+                                   , _generatedFuns :: [L4Function]
+                                   }
+-- Generate lenses
+makeLenses ''CountFunState
 
 translate :: L5Program -> L4Program
 translate (L5Program e) = L4Program eOut gfs
@@ -18,17 +26,16 @@ translate (L5Program e) = L4Program eOut gfs
         (eOut,(CountFunState _ _ gfs)) = runCFS startCFS M.empty (process e)
 
 
-
-data CountFunState = CountFunState { xCount :: Int
-                                   , labCount :: Int
-                                   , generatedFuns :: [L4Function]
-                                   }
 startCFS :: CountFunState
 startCFS = CountFunState 0 0 []
 
 
--- Readers map goes from L5X's (that functions are bound to) to the
+-- ReaderT maps from L5X's (that functions are bound to) to the
 -- corresponding L4 function label and the arguments of the function
+--
+-- StateT holds a CountFunState, which keeps track of x & label counts
+-- (so fresh ones are generated) and holds the L4 Functions that are
+-- generated as we talk over the L5 program tree
 type CFS a = ReaderT (M.Map L5X (L4Label,[L5X])) (StateT CountFunState Identity) a
 runCFS :: s -> r -> ReaderT r (StateT s Identity) a -> (a, s)
 runCFS st env comp = runIdentity (runStateT (runReaderT comp env) st)
@@ -40,7 +47,7 @@ new4X = liftM prefix4X getIncXCount
 
 prefix4X :: Int -> L4X
 prefix4X n = L4X $ "x_" ++ show n
-
+--
 --
 new5X :: CFS L5X
 new5X = liftM prefix5X getIncXCount
@@ -48,14 +55,9 @@ new5X = liftM prefix5X getIncXCount
 prefix5X :: Int -> L5X
 prefix5X n = L5X $ "v_" ++ show n
 
---
 getIncXCount :: CFS Int
-getIncXCount = do
-    cfs@(CountFunState xc _ _) <- get
-    put cfs{ xCount = xc + 1 }
-    return xc
-
-
+getIncXCount = xCount <+= 1
+--
 --
 newLab :: CFS L4Label
 newLab = liftM prefixLab getIncLabCount
@@ -64,19 +66,12 @@ prefixLab :: Int -> L4Label
 prefixLab n = L4Label $ "f_" ++ show n
 
 getIncLabCount :: CFS Int
-getIncLabCount = do
-    cfs@(CountFunState _ lc _) <- get
-    put cfs{ labCount = lc + 1 }
-    return lc    
-
-
+getIncLabCount = labCount <+= 1
+--
 --
 addFun :: L4Function -> CFS ()
-addFun f = do
-    cfs@(CountFunState _ _ gfs) <- get
-    put cfs{ generatedFuns = (f:gfs) }
-
-
+addFun f = generatedFuns %= (f:)
+--
 
 unpackLets :: L4X -> [L4X] -> (L4E -> L4E)
 unpackLets tup_name xs = foldl (\ acc (x,idx) -> acc . (L4Let x (L4Aref (L4Ex tup_name) (L4Enum idx))))
@@ -102,6 +97,11 @@ compileE (L5Lambda xs e) = do
     addFun $ L4Function fun_lab fun_args (unpackLets vars_name freeXs $ fun_body)
     return . L4MakeClosure fun_lab . L4NewTuple $ map L4Ex freeXs
 
+-- If x is in the ReaderT env, it means it is bound to a function which we
+-- have optimized to have no closure. If we reach this case it means the
+-- function will "escape" and be returned by a function. This would ambush
+-- a potential caller because they won't know it doesn't have a closure, so
+-- we compile it to have a closure here.
 compileE (L5Ex x) = do
     env <- ask
     case M.lookup x env of
@@ -113,9 +113,12 @@ compileE (L5Let x e1 e2) = do
     return $ L4Let (compileX x) e1_c e2_c
 
 compileE (L5LetRec x e1 e2) = case e1 of
-    L5Lambda args body -> if (length $ findFreeNonDuplicates (x:args) body) /= 0
-                             then normalLetRec
-                             else do
+    L5Lambda args body -> if (length $ findFreeNonDuplicates (x:args) body) == 0
+                             -- Here we compile the function without
+                             -- a closure, for efficiency reasons. We
+                             -- insert it into the ReaderT env so we will
+                             -- know later that it is closure-less.
+                             then do
                                 fun_lab <- newLab
                                 body_c <- local (M.insert x (fun_lab,args)) $ compileE body
                                 -- Do extra args here
@@ -131,6 +134,7 @@ compileE (L5LetRec x e1 e2) = case e1 of
                                     fun_body = unpack_extra_args body_c
                                 addFun $ L4Function fun_lab packed_fun_args fun_body
                                 local (M.insert x (fun_lab,args)) $ compileE e2
+                             else normalLetRec
 
     _ -> normalLetRec
     where normalLetRec = do
@@ -338,8 +342,5 @@ renamePass env (L5Apply f as) = do
     return $ L5Apply f_r as_r
 
 renamePass _ e = return e
-
-
-
 
 
