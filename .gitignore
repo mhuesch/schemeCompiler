@@ -18,8 +18,10 @@ L3c
 L4c
 L5c
 
-*/L1_64/*
-!*/L1_64.cf
+src/L1/*
+!src/L1/L1.cf
+src/L2/*
+!src/L2/L2.cf
 src/Makefile
 
 322-interps/tests*

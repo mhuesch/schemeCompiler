@@ -1,1 +1,1 @@
-bnfc -m -haskell -p L1_64 L1_64/L1.cf
+bnfc -m -haskell -p L1 L1/L1.cf
