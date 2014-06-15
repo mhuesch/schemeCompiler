@@ -4,22 +4,31 @@ module Main where
 import Control.Monad
 import System.Exit (exitFailure)
 import System.Environment
-import Text.ParserCombinators.Parsec hiding (State)
 
-import L2.Grammar
-import L2.Parser
-import L2.Display
+import L2.AbsL2
+import L2.LexL2
+import L2.ParL2
+import L2.PrintL2
+import L2.ErrM
 import Spill.Spill
 
 
 main :: IO ()
 main = do
     args <- getArgs
-    when (length args == 0) $ do
+    when (length args /= 1) $ do
         putStrLn "usage: filename"
         exitFailure
-    result <- parseFromFile parseSpill (args !! 0)
-    case result of
-        Left err -> putStrLn . show $ err
-        Right (L2Spill ls var offset prefix) -> putStrLn . displayInstrList $ spill ls var offset prefix
+    ts <- liftM myLexer $ readFile (head args)
+    case pSpill ts of
+      Bad s -> do
+        putStrLn "\nParse              Failed...\n"
+        putStrLn "Tokens:"
+        putStrLn $ show ts
+        putStrLn s
+      Ok (Sp instrs varToSpill (PosNegInteger offset) prefix) -> do
+        let res = spill instrs varToSpill (read offset) prefix
+        putStrLn "("
+        putStrLn $ printTree res
+        putStrLn ")"
 

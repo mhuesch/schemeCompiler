@@ -11,6 +11,9 @@ terminator Function "" ;
 Fun. Function ::= "(" Label N N [Instruction] ")" ;
 
 
+Sp. Spill ::= "(" [Instruction] ")" Variable PosNegInteger Variable ;
+
+
 IAssign.     Instruction ::= "(" W "<-" S ")"                 ;
 IReadMem.    Instruction ::= "(" W "<-" "(" "mem" X N ")" ")" ;
 IWriteMem.   Instruction ::= "(" "(" "mem" X N ")" "<-" S ")" ;
@@ -47,11 +50,11 @@ Tnum. T ::= N ;
 
 
 Xw.   X ::= W     ;
-Xrsp. X ::= "rsp" ;
+RSP.  X ::= "rsp" ;
 
 
-RCX. CX ::= "rcx" ;
-Var. CX ::= String;
+RCX. CX ::= "rcx"    ;
+Var. CX ::= Variable ;
 
 Wcx. W ::= CX     ;
 RAX. W ::= "rax"  ;
@@ -87,6 +90,7 @@ Equal.         CMP ::= "="  ;
 
 token Label ':' (letter |  '_') (letter | digit | '_')* ;
 token PosNegInteger '-'? digit+ ;
+token Variable (letter | '_') (letter | digit | '_' | '-')* ;
 
 Num. N ::= PosNegInteger ;
 
