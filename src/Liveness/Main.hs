@@ -4,23 +4,26 @@ module Main where
 import Control.Monad
 import System.Exit (exitFailure)
 import System.Environment
-import Text.ParserCombinators.Parsec hiding (State)
 
-import L2.Grammar
-import L2.Parser
-import L2.Display
+import L2.AbsL2
+import L2.ParL2
+import L2.ErrM
 import Liveness.Liveness
 
 
 main :: IO ()
 main = do
     args <- getArgs
-    when (length args == 0) $ do
-        putStrLn "usage: filename"
-        exitFailure
-    result <- parseFromFile parseFunBody (args !! 0)
-    case result of
-        Left err -> putStrLn . show $ err
-        Right ls -> putStrLn . displayLiveArray . liveness $ ls
+    when (length args /= 1) $ do
+      putStrLn "usage: filename"
+      exitFailure
+    ts <- liftM myLexer $ readFile (head args)
+    case pParenListInstruction ts of
+      Bad s -> do
+        putStrLn "\nParse              Failed...\n"
+        putStrLn "Tokens:"
+        print ts
+        putStrLn s
 
+      Ok (PLI is) -> putStrLn . displayLiveArray . liveness $ is
 

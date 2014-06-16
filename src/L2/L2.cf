@@ -12,6 +12,7 @@ Fun. Function ::= "(" Label N N [Instruction] ")" ;
 
 
 Sp. Spill ::= "(" [Instruction] ")" Variable PosNegInteger Variable ;
+PLI. ParenListInstruction ::= "(" [Instruction] ")" ;
 
 
 IAssign.     Instruction ::= "(" W "<-" S ")"                 ;

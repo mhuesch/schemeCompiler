@@ -1,11 +1,11 @@
 module Glue where
 
-import L2.Grammar
+import L2.AbsL2
 
 data LivenessResult = LivenessResult { iInfos :: [InstructionInfo]
-                                     , allVars :: [L2Var]
+                                     , allVars :: [Variable]
                                      }
 
-data InstructionInfo = InstructionInfo { instruct :: L2Instruction
-                                       , intrfr :: [L2X]
+data InstructionInfo = InstructionInfo { instruct :: Instruction
+                                       , intrfr :: [X]
                                        }
