@@ -6,7 +6,6 @@ import System.Exit (exitFailure)
 import System.Environment
 
 import L2.AbsL2
-import L2.LexL2
 import L2.ParL2
 import L2.PrintL2
 import L2.ErrM
@@ -24,7 +23,7 @@ main = do
       Bad s -> do
         putStrLn "\nParse              Failed...\n"
         putStrLn "Tokens:"
-        putStrLn $ show ts
+        print ts
         putStrLn s
       Ok (Sp instrs varToSpill (PosNegInteger offset) prefix) -> do
         let res = spill instrs varToSpill (read offset) prefix
