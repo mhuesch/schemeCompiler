@@ -137,7 +137,14 @@ assembleInstruction (ILabel label) = return $ standaloneLabel label ++ "\n"
 
 assembleInstruction (IGoto label) = return $ "jmp " ++ inlineLabel label ++ "\n"
 
-assembleInstruction (ICall u) = return $ "jmp " ++ assembleU u ++ "\n"
+assembleInstruction (ICallNative u) = return $ "jmp " ++ assembleU u ++ "\n"
+
+assembleInstruction (ICallRuntime r) = return $ "call " ++ rName ++ "\n"
+  where
+    rName = case r of
+              Print ->      "print"
+              Allocate ->   "allocate"
+              ArrayError -> "print_error"
 
 assembleInstruction (ITailCall u) = do
     offset <- asks myFrameOffset
@@ -148,12 +155,6 @@ assembleInstruction (IReturn) = do
     offset <- asks myArgsSpillsOffset
     return $ intercalate "\n" ["addq " ++ assembleConstant offset ++ ", %rsp"
                               ,"ret\n"]
-
-assembleInstruction (IPrint _ t) = return $ "movq " ++ assembleT t ++ ", " ++ assembleX (Xw RDI) ++ "\ncall print\n"
-
-assembleInstruction (IAllocate _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RSI) ++ "\ncall allocate\n"
-
-assembleInstruction (IArrayError _ t1 t2) = return $ "movq " ++ assembleT t1 ++ ", " ++ assembleX (Xw RDI) ++ "\nmovq " ++ assembleT t2 ++ ", " ++ assembleX (Xw RSI) ++ "\ncall print_error\n"
 
 
 xLowByte :: X -> String

@@ -24,14 +24,14 @@ ILabel.      Instruction ::= Label                               ;
 IGoto.       Instruction ::= "(" "goto" Label ")"                ;
 ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
 
-ICall.       Instruction ::= "(" "call" U ")"      ;
+ICallNative. Instruction ::= "(" "call" U ")"      ;
+ICallRuntime.Instruction ::= "(" "call" R ")"      ;
 ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
 IReturn.     Instruction ::= "(" "return" ")"      ;
 
-IPrint.      Instruction ::= "(" W "<-" "(" "print" T ")" ")"         ;
-IAllocate.   Instruction ::= "(" W "<-" "(" "allocate" T T ")" ")"    ;
-IArrayError. Instruction ::= "(" W "<-" "(" "array-error" T T ")" ")" ;
-
+Print.      R ::= "print"       ;
+Allocate.   R ::= "allocate"    ;
+ArrayError. R ::= "array-error" ;
 
 Sx.   S ::= X     ;
 Snum. S ::= N     ;
