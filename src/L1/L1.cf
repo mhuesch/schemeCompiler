@@ -24,9 +24,9 @@ ILabel.      Instruction ::= Label                               ;
 IGoto.       Instruction ::= "(" "goto" Label ")"                ;
 ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
 
-ICallNative. Instruction ::= "(" "call" U ")"      ;
-ICallRuntime.Instruction ::= "(" "call" R ")"      ;
-ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
+ICallNative. Instruction ::= "(" "call" U PosNegInteger ")"      ;
+ICallRuntime.Instruction ::= "(" "call" R PosNegInteger ")"      ;
+ITailCall.   Instruction ::= "(" "tail-call" U PosNegInteger ")" ;
 IReturn.     Instruction ::= "(" "return" ")"      ;
 
 Print.      R ::= "print"       ;

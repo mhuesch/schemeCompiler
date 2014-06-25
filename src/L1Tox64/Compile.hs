@@ -137,16 +137,16 @@ assembleInstruction (ILabel label) = return $ standaloneLabel label ++ "\n"
 
 assembleInstruction (IGoto label) = return $ "jmp " ++ inlineLabel label ++ "\n"
 
-assembleInstruction (ICallNative u) = return $ "jmp " ++ assembleU u ++ "\n"
+assembleInstruction (ICallNative u _) = return $ "jmp " ++ assembleU u ++ "\n"
 
-assembleInstruction (ICallRuntime r) = return $ "call " ++ rName ++ "\n"
+assembleInstruction (ICallRuntime r _) = return $ "call " ++ rName ++ "\n"
   where
     rName = case r of
               Print ->      "print"
               Allocate ->   "allocate"
               ArrayError -> "print_error"
 
-assembleInstruction (ITailCall u) = do
+assembleInstruction (ITailCall u _) = do
     offset <- asks myFrameOffset
     return $ intercalate "\n" ["addq " ++ assembleConstant offset ++ ", %rsp"
                               ,"jmp " ++ assembleU u ++ "\n"]
