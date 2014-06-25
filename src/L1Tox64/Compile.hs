@@ -158,7 +158,7 @@ assembleInstruction (IReturn) = do
 
 
 xLowByte :: X -> String
-xLowByte Xrsp = "%spl"
+xLowByte RSP = "%spl"
 xLowByte (Xw (Wcx RCX)) = "%cl"
 xLowByte (Xw RAX) = "%al"
 xLowByte (Xw RBX) = "%dl"
@@ -179,7 +179,7 @@ assembleCompare :: Bool -> String
 assembleCompare test = assembleN . Num . PosNegInteger $ (if test then "1" else "0")
 
 assembleX :: X -> String
-assembleX Xrsp = "%rsp"
+assembleX RSP = "%rsp"
 assembleX (Xw (Wcx RCX)) = "%rcx"
 assembleX (Xw RAX) = "%rax"
 assembleX (Xw RBX) = "%rbx"

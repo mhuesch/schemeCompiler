@@ -47,7 +47,7 @@ Tnum. T ::= N ;
 
 
 Xw.   X ::= W     ;
-Xrsp. X ::= "rsp" ;
+RSP.  X ::= "rsp" ;
 
 
 RCX. CX ::= "rcx" ;
