@@ -105,12 +105,12 @@ findSuccessors ls idx = case (ls !! idx) of
     (ICjump _ _ _ label1 label2) -> catMaybes [elemIndex (ILabel label1) ls
                                                ,elemIndex (ILabel label2) ls
                                                ]
-    (IArrayError{}) -> []
-    (IReturn)       -> []
-    (ITailCall _)   -> []
-    _               -> if (idx + 1) >= length ls
-                          then []
-                          else [idx + 1]
+    (ICallRuntime ArrayError _) -> []
+    IReturn                     -> []
+    ITailCall{}                 -> []
+    _                           -> if (idx + 1) >= length ls
+                                      then []
+                                      else [idx + 1]
 
 
 isLive :: X -> Bool
@@ -141,9 +141,6 @@ gen (IShiftN w _ _) = liveSet [Xw w]
 gen (ISaveCmp _ t1 _ t2) = extractXs t1 t2
 gen (ICjump t1 _ t2 _ _) = extractXs t1 t2
 gen (IReturn) = liveSet $ resultRegX ++ calleeSaveRegX
-gen (IPrint _ (Tx x)) = liveSet [x]
-gen (IAllocate _ t1 t2) = extractXs t1 t2
-gen (IArrayError _ t1 t2) = extractXs t1 t2
 --
 gen (IWriteMem x1 _ s) = case s of
     (Sx x2) -> liveSet [x1,x2]
@@ -153,16 +150,20 @@ gen (IArith w _ t) = case t of
     (Tx x) -> liveSet [Xw w,x]
     _ -> liveSet [Xw w]
 --
-gen (ICall u) = case u of
-    (Ux x) -> liveSet $ x : argRegX
-    _ -> liveSet argRegX
+gen (ICallNative u arity) = case u of
+    (Ux x) -> liveSet $ x : argsByArity arity
+    _ -> liveSet $ argsByArity arity
 --
-gen (ITailCall u) = case u of
-    (Ux x) -> liveSet $ x : argRegX ++ calleeSaveRegX
-    _ -> liveSet $ argRegX ++ calleeSaveRegX
+gen (ICallRuntime _ arity) = liveSet $ argsByArity arity
+--
+gen (ITailCall u arity) = case u of
+    (Ux x) -> liveSet $ x : calleeSaveRegX ++ argsByArity arity
+    _ -> liveSet $ calleeSaveRegX ++ argsByArity arity
 --
 gen _ = liveSet []
 
+
+argsByArity arity = take (pniToInt arity) argRegX
 
 extractXs :: T -> T -> S.Set X
 extractXs t1 t2 = case (t1,t2) of
@@ -180,13 +181,13 @@ kill (IArith w _ _) = liveSet [Xw w]
 kill (IShiftCX w _ _) = liveSet [Xw w]
 kill (IShiftN w _ _) = liveSet [Xw w]
 kill (ISaveCmp w _ _ _) = liveSet [Xw w]
-kill (ICall _) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
-kill (IPrint{}) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
-kill (IAllocate{}) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
-kill (IArrayError{}) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
+kill (ICallNative _ _) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
+kill (ICallRuntime _ _) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
 kill _ = liveSet []
 
 
+pniToInt :: PosNegInteger -> Int
+pniToInt (PosNegInteger s) = read s
 
 
 inStep :: LiveSlot -> LiveSlot
