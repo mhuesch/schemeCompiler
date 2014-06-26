@@ -28,13 +28,14 @@ ILabel.      Instruction ::= Label                               ;
 IGoto.       Instruction ::= "(" "goto" Label ")"                ;
 ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
 
-ICall.       Instruction ::= "(" "call" U ")"      ;
-ITailCall.   Instruction ::= "(" "tail-call" U ")" ;
+ICallNative. Instruction ::= "(" "call" U PosNegInteger ")"      ;
+ICallRuntime.Instruction ::= "(" "call" R PosNegInteger ")"      ;
+ITailCall.   Instruction ::= "(" "tail-call" U PosNegInteger ")" ;
 IReturn.     Instruction ::= "(" "return" ")"      ;
 
-IPrint.      Instruction ::= "(" W "<-" "(" "print" T ")" ")"         ;
-IAllocate.   Instruction ::= "(" W "<-" "(" "allocate" T T ")" ")"    ;
-IArrayError. Instruction ::= "(" W "<-" "(" "array-error" T T ")" ")" ;
+Print.      R ::= "print"       ;
+Allocate.   R ::= "allocate"    ;
+ArrayError. R ::= "array-error" ;
 
 
 Sx.   S ::= X     ;
