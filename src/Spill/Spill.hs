@@ -200,78 +200,29 @@ spillInstruction i@(ICjump t1 cmp t2 l1 l2) = do
                    ]
         (False,False) -> return [i]
 
-spillInstruction i@(ICall u) = do
+spillInstruction i@(ICallNative u arity) = do
     (var,varOffset,prefix) <- ask
     case (u == Ux (variableToX var)) of
         True -> do
             newVar <- genVar prefix
             return [(mkRead (variableToW newVar) varOffset)
-                   ,(ICall (Ux (variableToX newVar)))
+                   ,(ICallNative (Ux (variableToX newVar)) arity)
                    ]
         False -> return [i]
 
-spillInstruction i@(ITailCall u) = do
+spillInstruction i@ICallRuntime{} = return [i]
+
+spillInstruction i@(ITailCall u arity) = do
     (var,varOffset,prefix) <- ask
     case (u == Ux (variableToX var)) of
         True -> do
             newVar <- genVar prefix
             return [(mkRead (variableToW newVar) varOffset)
-                   ,(ITailCall (Ux (variableToX newVar)))
+                   ,(ITailCall (Ux (variableToX newVar)) arity)
                    ]
         False -> return [i]
 
-spillInstruction i@(IReturn) = return [i]
-
-spillInstruction i@(IPrint w t) = do
-    (var,varOffset,prefix) <- ask
-    case (t == Tx (variableToX var)) of
-        True -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IPrint w (Tx (variableToX newVar)))
-                   ]
-        False -> return [i]
-        
-spillInstruction i@(IAllocate w t1 t2) = do
-    (var,varOffset,prefix) <- ask
-    case ((t1 == Tx (variableToX var)),(t2 == Tx (variableToX var))) of
-        (True,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IAllocate w (Tx (variableToX newVar)) (Tx (variableToX newVar)))
-                   ]
-        (True,False) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IAllocate w (Tx (variableToX newVar)) t2)
-                   ]
-        (False,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IAllocate w t1 (Tx (variableToX newVar)))
-                   ]
-        (False,False) -> return [i]
-
-spillInstruction i@(IArrayError w t1 t2) = do
-    (var,varOffset,prefix) <- ask
-    case ((t1 == Tx (variableToX var)),(t2 == Tx (variableToX var))) of
-        (True,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IArrayError w (Tx (variableToX newVar)) (Tx (variableToX newVar)))
-                   ]
-        (True,False) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IArrayError w (Tx (variableToX newVar)) t2)
-                   ]
-        (False,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (variableToW newVar) varOffset)
-                   ,(IArrayError w t1 (Tx (variableToX newVar)))
-                   ]
-        (False,False) -> return [i]
-
+spillInstruction i@IReturn = return [i]
 
 
 genVar :: (Num a, Show a, MonadState a m) => Variable -> m Variable
@@ -284,7 +235,7 @@ intToN :: Int -> N
 intToN = Num . PosNegInteger . show
 
 mkWrite :: Int -> S -> Instruction
-mkWrite o s = IWriteMem RSP (intToN o) s
+mkWrite o = IWriteMem RSP (intToN o)
 
 mkRead :: W -> Int -> Instruction
 mkRead w o = IReadMem w RSP (intToN o)
