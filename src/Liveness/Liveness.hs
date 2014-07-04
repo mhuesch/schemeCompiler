@@ -4,6 +4,7 @@ module Liveness.Liveness where
 import Data.List
 import Data.Maybe
 import Data.Array
+import Data.Function (on)
 import qualified Data.Set as S
 import qualified Data.Map as M
 
@@ -38,7 +39,7 @@ liveRes ls = LivenessResult infos vars
         allOuts = map (\ slot -> InstructionInfo (instr slot) (S.toList $ S.union (filterKills slot) (outSet slot))) $ elems arr
 
 costSortedVars :: [InstructionInfo] -> [Variable]
-costSortedVars infos = map fst . sortBy (\ x y -> compare (snd x) (snd y)) $ weightedAssocs
+costSortedVars infos = map fst . sortBy (compare `on` snd) $ weightedAssocs
     where
         weightedAssocs = computeWeighting interferingVars
         interferingVars = map (concatMap getVars . intrfr) infos
@@ -100,7 +101,7 @@ makeSlot :: [Instruction] -> Int -> LiveSlot
 makeSlot ls idx = LiveSlot (ls !! idx) S.empty S.empty (findSuccessors ls idx)
 
 findSuccessors :: [Instruction] -> Int -> [Int]
-findSuccessors ls idx = case (ls !! idx) of
+findSuccessors ls idx = case ls !! idx of
     (IGoto label) -> catMaybes [elemIndex (ILabel label) ls]
     (ICjump _ _ _ label1 label2) -> catMaybes [elemIndex (ILabel label1) ls
                                                ,elemIndex (ILabel label2) ls
@@ -209,7 +210,7 @@ slotStep arr idx = inStep $ outStep arr idx
 
 
 arrayStep :: LiveArray -> LiveArray
-arrayStep arr = arr // (map (\ i -> (i,(slotStep arr i))) (indices arr))
+arrayStep arr = arr // map (\ i -> (i, slotStep arr i)) (indices arr)
 
 convergeLiveArray :: LiveArray -> LiveArray
 convergeLiveArray arr = if next == arr
@@ -220,10 +221,10 @@ convergeLiveArray arr = if next == arr
 
 
 displayLiveArray :: LiveArray -> String
-displayLiveArray arr = "((in\n" ++ (concat $ intersperse "\n" inLists)
+displayLiveArray arr = "((in\n" ++ unlines inLists
                                 ++ ")\n"
                                 ++ "(out\n"
-                                ++ (concat $ intersperse "\n" outLists)
+                                ++ unlines outLists
                                 ++ "))"
     where
         inLists = map (printSortedList . S.toList . inSet) $ elems arr

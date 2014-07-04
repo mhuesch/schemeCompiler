@@ -210,7 +210,7 @@ showN :: N -> String
 showN (Num (PosNegInteger i)) = i
 
 compareN :: (Integer -> Integer -> Bool) -> N -> N -> Bool
-compareN cmp n1 n2 = (nToInteger n1) `cmp` (nToInteger n2)
+compareN cmp n1 n2 = nToInteger n1 `cmp` nToInteger n2
 
 nToInteger :: N -> Integer
 nToInteger (Num (PosNegInteger i)) = (read i :: Integer)
