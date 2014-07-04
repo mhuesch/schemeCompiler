@@ -14,8 +14,8 @@ import L2.PrintL2
 
 
 data LiveSlot = LiveSlot { instr :: Instruction
-                         , inSet :: S.Set X
-                         , outSet :: S.Set X
+                         , inSet :: S.Set W
+                         , outSet :: S.Set W
                          , succIdxs :: [Int]
                          } deriving (Show, Eq)
 
@@ -33,7 +33,7 @@ liveRes ls = LivenessResult infos vars
         infos = case bounds arr of
             (0,-1) -> []
             _ -> firstIn:allOuts
-        filterKills slot = S.filter isLive . kill $ instr slot
+        filterKills slot = kill $ instr slot
         firstIn = (\ slot -> InstructionInfo (instr slot) (S.toList $ inSet slot)) $ arr ! 0
         allOuts = map (\ slot -> InstructionInfo (instr slot) (S.toList $ S.union (filterKills slot) (outSet slot))) $ elems arr
 
@@ -42,7 +42,7 @@ costSortedVars infos = map fst . sortBy (\ x y -> compare (snd x) (snd y)) $ wei
     where
         weightedAssocs = computeWeighting interferingVars
         interferingVars = map (concatMap getVars . intrfr) infos
-        getVars (Xw (Wcx (Var v))) = [v]
+        getVars (Wcx (Var v)) = [v]
         getVars _ = []
 
 computeWeighting :: (Ord a) => [[a]] ->[(a,Int)]
@@ -113,76 +113,75 @@ findSuccessors ls idx = case (ls !! idx) of
                                       else [idx + 1]
 
 
-isLive :: X -> Bool
-isLive RSP = False
-isLive _ = True
-
-liveSet :: [X] -> S.Set X
-liveSet = S.fromList . filter isLive
+liveSet :: [W] -> S.Set W
+liveSet = S.fromList
 
 {- Specific registers -}
-argRegX :: [X]
-argRegX = map Xw [RDI, RSI, RDX, (Wcx RCX), R8, R9]
+argRegW :: [W]
+argRegW = [RDI, RSI, RDX, (Wcx RCX), R8, R9]
 
-resultRegX :: [X]
-resultRegX = [Xw RAX]
+resultRegW :: [W]
+resultRegW = [RAX]
 
-callerSaveRegX :: [X]
-callerSaveRegX = map Xw [R10, R11]
+callerSaveRegW :: [W]
+callerSaveRegW = [R10, R11]
 
-calleeSaveRegX :: [X]
-calleeSaveRegX = map Xw [RBX, RBP, R12, R13, R14, R15]
+calleeSaveRegW :: [W]
+calleeSaveRegW = [RBX, RBP, R12, R13, R14, R15]
 
-gen :: Instruction -> S.Set X
-gen (IAssign _ (Sx x)) = liveSet [x]
-gen (IReadMem _ x _) = liveSet [x]
-gen (IShiftCX w _ cx) = liveSet [(Xw w),(Xw (Wcx cx))]
-gen (IShiftN w _ _) = liveSet [Xw w]
-gen (ISaveCmp _ t1 _ t2) = extractXs t1 t2
-gen (ICjump t1 _ t2 _ _) = extractXs t1 t2
-gen (IReturn) = liveSet $ resultRegX ++ calleeSaveRegX
+gen :: Instruction -> S.Set W
+gen (IAssign _ (Sx (Xw w))) = liveSet [w]
+gen (IReadMem _ (Xw w) _) = liveSet [w]
+gen (IShiftCX w _ cx) = liveSet [w,(Wcx cx)]
+gen (IShiftN w _ _) = liveSet [w]
+gen (ISaveCmp _ t1 _ t2) = extractWs t1 t2
+gen (ICjump t1 _ t2 _ _) = extractWs t1 t2
+gen (IReturn) = liveSet $ resultRegW ++ calleeSaveRegW
 --
-gen (IWriteMem x1 _ s) = case s of
-    (Sx x2) -> liveSet [x1,x2]
-    _ -> liveSet [x1]
+gen (IWriteMem x _ s) = case (x,s) of
+    (Xw w1, Sx (Xw w2)) -> liveSet [w1,w2]
+    (_, Sx (Xw w)) -> liveSet [w]
+    (Xw w, _) -> liveSet [w]
+    _ -> liveSet []
 --
-gen (IArith w _ t) = case t of
-    (Tx x) -> liveSet [Xw w,x]
-    _ -> liveSet [Xw w]
+gen (IArith w1 _ t) = case t of
+    (Tx (Xw w2)) -> liveSet [w1,w2]
+    _ -> liveSet [w1]
 --
 gen (ICallNative u arity) = case u of
-    (Ux x) -> liveSet $ x : argsByArity arity
+    (Ux (Xw w)) -> liveSet $ w : argsByArity arity
     _ -> liveSet $ argsByArity arity
 --
 gen (ICallRuntime _ arity) = liveSet $ argsByArity arity
 --
 gen (ITailCall u arity) = case u of
-    (Ux x) -> liveSet $ x : calleeSaveRegX ++ argsByArity arity
-    _ -> liveSet $ calleeSaveRegX ++ argsByArity arity
+    (Ux (Xw w)) -> liveSet $ w : calleeSaveRegW ++ argsByArity arity
+    _ -> liveSet $ calleeSaveRegW ++ argsByArity arity
 --
 gen _ = liveSet []
 
 
-argsByArity arity = take (pniToInt arity) argRegX
+argsByArity :: PosNegInteger -> [W]
+argsByArity arity = take (pniToInt arity) argRegW
 
-extractXs :: T -> T -> S.Set X
-extractXs t1 t2 = case (t1,t2) of
-    (Tx x1, Tx x2) -> liveSet [x1,x2]
-    (Tx x, Tnum _) -> liveSet [x]
-    (Tnum _, Tx x) -> liveSet [x]
+extractWs :: T -> T -> S.Set W
+extractWs t1 t2 = case (t1,t2) of
+    (Tx (Xw w1), Tx (Xw w2)) -> liveSet [w1,w2]
+    (Tx (Xw w), Tnum _) -> liveSet [w]
+    (Tnum _, Tx (Xw w)) -> liveSet [w]
     _ -> liveSet []
 
 
-kill :: Instruction -> S.Set X
-kill (IAssign w _) = liveSet [Xw w]
-kill (IReadMem w _ _) = liveSet [Xw w]
+kill :: Instruction -> S.Set W
+kill (IAssign w _) = liveSet [w]
+kill (IReadMem w _ _) = liveSet [w]
 kill (IWriteMem{}) = liveSet []
-kill (IArith w _ _) = liveSet [Xw w]
-kill (IShiftCX w _ _) = liveSet [Xw w]
-kill (IShiftN w _ _) = liveSet [Xw w]
-kill (ISaveCmp w _ _ _) = liveSet [Xw w]
-kill (ICallNative _ _) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
-kill (ICallRuntime _ _) = liveSet $ resultRegX ++ callerSaveRegX ++ argRegX
+kill (IArith w _ _) = liveSet [w]
+kill (IShiftCX w _ _) = liveSet [w]
+kill (IShiftN w _ _) = liveSet [w]
+kill (ISaveCmp w _ _ _) = liveSet [w]
+kill (ICallNative _ _) = liveSet $ resultRegW ++ callerSaveRegW ++ argRegW
+kill (ICallRuntime _ _) = liveSet $ resultRegW ++ callerSaveRegW ++ argRegW
 kill _ = liveSet []
 
 
@@ -232,6 +231,6 @@ displayLiveArray arr = "((in\n" ++ (concat $ intersperse "\n" inLists)
 
 
 
-printSortedList :: [X] -> String
-printSortedList xs = "(" ++ (unwords . sort . map printTree $ xs) ++ ")"
+printSortedList :: (Print a, Ord a) => [a] -> String
+printSortedList as = "(" ++ (unwords . sort . map printTree $ as) ++ ")"
 
