@@ -25,6 +25,6 @@ main = do
         putStrLn s
       Ok prog -> do
         case translate prog of
-          (Left err) -> putStrLn $ show err
+          (Left err) -> putStrLn err
           (Right cp) -> putStrLn . printTree $ cp
 
