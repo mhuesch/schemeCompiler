@@ -59,6 +59,15 @@ spillInstruction i@(IReadMem w x readOffset) = do
                    ,(IReadMem w (variableToX newVar) readOffset)]
         (False,False) -> return [i]
 
+spillInstruction i@(IReadArg w offset) = do
+    (var,varOffset,prefix) <- ask
+    case w == variableToW var of
+      True -> do
+        newVar <- genVar prefix
+        return [(IReadArg (variableToW newVar) offset)
+               ,(mkWrite varOffset (Sx (variableToX newVar)))]
+      False -> return [i]
+
 spillInstruction i@(IWriteMem x updateOffset s) = do
     (var,varOffset,prefix) <- ask
     case ((x == variableToX var),(s == Sx (variableToX var))) of
@@ -235,7 +244,7 @@ intToN :: Int -> N
 intToN = Num . PosNegInteger . show
 
 mkWrite :: Int -> S -> Instruction
-mkWrite o = IWriteMem RSP (intToN o)
+mkWrite o = IWriteMem RSP (intToN o) 
 
 mkRead :: W -> Int -> Instruction
 mkRead w o = IReadMem w RSP (intToN o)

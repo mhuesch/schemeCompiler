@@ -17,6 +17,7 @@ PLI. ParenListInstruction ::= "(" [Instruction] ")" ;
 
 IAssign.     Instruction ::= "(" W "<-" S ")"                 ;
 IReadMem.    Instruction ::= "(" W "<-" "(" "mem" X N ")" ")" ;
+IReadArg.    Instruction ::= "(" W "<-" "(" "stack-arg" N ")" ")" ;
 IWriteMem.   Instruction ::= "(" "(" "mem" X N ")" "<-" S ")" ;
 
 IArith.      Instruction ::= "(" W AOP T ")"        ;
