@@ -39,7 +39,7 @@ data InstrOrStackArg = Inst Instruction
 compileFun :: L2.Function -> RE Function
 compileFun (L2.Fun label@(L2.Label name) arity spills body) = do
     (instrs,spillCount) <- local (++ " function " ++ name) $ compileInstructionsCountSpills (nToInt spills) (tempCalleeSave body)
-    let fixedInstrs = converStackReads spillCount instrs
+    let fixedInstrs = coalesce $ converStackReads spillCount instrs
         spillN = Num . PosNegInteger . show $ spillCount
     return $ Fun (compileLabel label) (compileN arity) spillN fixedInstrs
 
@@ -50,6 +50,12 @@ converStackReads spills = map f
     f (SA w (Num (PosNegInteger i))) = let offset = read i + (intBitWidth * spills)
                                            newN = Num . PosNegInteger . show $ offset
                                          in IReadMem w RSP newN
+
+coalesce :: [Instruction] -> [Instruction]
+coalesce = filter f
+  where
+    f (IAssign w1 (Sx (Xw w2))) = w1 /= w2
+    f _ = True
 
 
 tempCalleeSave :: [L2.Instruction] -> [L2.Instruction]
