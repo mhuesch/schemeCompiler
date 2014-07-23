@@ -5,16 +5,23 @@ import Control.Monad
 import System.Exit (exitFailure)
 import System.Environment
 
-import L3.Parser
-import L2.Display
+import L3.ParL3
+import L3.ErrM
 import L3ToL2.Compile
+import L2.PrintL2
 
+main :: IO ()
 main = do
     args <- getArgs
-    when (length args == 0) $ do
-        putStrLn "usage: filename"
-        exitFailure
-    result <- liftM readProg (readFile (args !! 0))
-    case result of
-        Ok p -> putStrLn . displayProgram . translate $ p
-        Failed err -> putStrLn err
+    when (length args /= 1) $ do
+      putStrLn "usage: filename"
+      exitFailure
+    ts <- liftM myLexer $ readFile (head args)
+    case pProgram ts of
+      Bad s -> do
+        putStrLn "\nParse              Failed...\n"
+        putStrLn "Tokens:"
+        print ts
+        putStrLn s
+      Ok prog -> putStrLn . printTree . translate $ prog
+

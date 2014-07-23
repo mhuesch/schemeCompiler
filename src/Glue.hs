@@ -10,3 +10,6 @@ data InstructionInfo = InstructionInfo { instruct :: Instruction
                                        , intrfr :: [W]
                                        }
 
+argRegW :: [W]
+argRegW = [RDI, RSI, RDX, (Wcx RCX), R8, R9]
+
