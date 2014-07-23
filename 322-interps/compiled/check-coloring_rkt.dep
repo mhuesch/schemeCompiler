@@ -1,1 +1,1 @@
-("6.0" ("1d92d228502d46197c3d8ce67a350ea7925d7d70" . "5369ecf7e3f3305b9140046881b12326752daf51") #"/Users/michaelhueschen/github/local/compilers/interp/check-coloring-lib.rkt" (collects #"racket" #"cmdline.rkt") (collects #"racket" #"base.rkt") (collects #"racket" #"runtime-config.rkt"))
+("6.0" ("1d92d228502d46197c3d8ce67a350ea7925d7d70" . "ccbb51f76ac5665af66bedea3a905e9119ddc73b") #"/Users/michaelhueschen/github/local/compilers/interp/check-coloring-lib.rkt" (collects #"racket" #"cmdline.rkt") (collects #"racket" #"base.rkt") (collects #"racket" #"runtime-config.rkt"))
