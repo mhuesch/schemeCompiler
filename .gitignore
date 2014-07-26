@@ -26,6 +26,8 @@ src/L3/*
 !src/L3/L3.cf
 src/L4/*
 !src/L4/L4.cf
+src/L5/*
+!src/L5/L5.cf
 src/Makefile
 
 322-interps/tests*
