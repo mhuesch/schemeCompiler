@@ -9,111 +9,126 @@ import Control.Monad.Reader
 import Data.List
 import qualified Data.Map as M
 
-import L5.Grammar
-import L4.Grammar
+import qualified L5.AbsL5 as L5
+import qualified L4.AbsL4 as L4
 
 data CountFunState = CountFunState { _xCount :: Int
                                    , _labCount :: Int
-                                   , _generatedFuns :: [L4Function]
+                                   , _generatedFuns :: [L4.Function]
                                    }
 -- Generate lenses
 makeLenses ''CountFunState
 
-translate :: L5Program -> L4Program
-translate (L5Program e) = L4Program eOut gfs
+translate :: L5.Program -> L4.Program
+translate (L5.Prog e) = L4.Prog eOut (_generatedFuns cfs)
     where
-        process e = renamePass M.empty e >>= compileE
-        (eOut,(CountFunState _ _ gfs)) = runCFS startCFS M.empty (process e)
+        process e' = renamePass M.empty e' >>= compileE
+        (eOut,cfs) = runCFS startCFS M.empty (process e)
 
 
 startCFS :: CountFunState
 startCFS = CountFunState 0 0 []
 
 
--- ReaderT maps from L5X's (that functions are bound to) to the
--- corresponding L4 function label and the arguments of the function
+-- ReaderT maps from L5.X's (that functions are bound to) to the
+-- corresponding L4. function label and the arguments of the function
 --
 -- StateT holds a CountFunState, which keeps track of x & label counts
--- (so fresh ones are generated) and holds the L4 Functions that are
--- generated as we talk over the L5 program tree
-type CFS a = ReaderT (M.Map L5X (L4Label,[L5X])) (StateT CountFunState Identity) a
+-- (so fresh ones are generated) and holds the L4. Functions that are
+-- generated as we talk over the L5. program tree
+type CFS a = ReaderT (M.Map L5.X (L4.Label,[L5.X])) (StateT CountFunState Identity) a
 runCFS :: s -> r -> ReaderT r (StateT s Identity) a -> (a, s)
 runCFS st env comp = runIdentity (runStateT (runReaderT comp env) st)
 
 
+--
+-- Misc helpers
+--
+make4X :: String -> L4.X
+make4X = L4.Var . L4.Variable
+
+make5X :: String -> L5.X
+make5X = L5.Var . L5.Variable
+
+make4PNI :: Int -> L4.PosNegInteger
+make4PNI = L4.PosNegInteger . show
+
+make5PNI :: Int -> L5.PosNegInteger
+make5PNI = L5.PosNegInteger . show
+
 {- Stateful functions -}
-new4X :: CFS L4X
+new4X :: CFS L4.X
 new4X = liftM prefix4X getIncXCount
 
-prefix4X :: Int -> L4X
-prefix4X n = L4X $ "x_" ++ show n
+prefix4X :: Int -> L4.X
+prefix4X n = make4X $ "x_" ++ show n
 --
 --
-new5X :: CFS L5X
+new5X :: CFS L5.X
 new5X = liftM prefix5X getIncXCount
 
-prefix5X :: Int -> L5X
-prefix5X n = L5X $ "v_" ++ show n
+prefix5X :: Int -> L5.X
+prefix5X n = make5X $ "v_" ++ show n
 
 getIncXCount :: CFS Int
 getIncXCount = xCount <+= 1
 --
 --
-newLab :: CFS L4Label
+newLab :: CFS L4.Label
 newLab = liftM prefixLab getIncLabCount
 
-prefixLab :: Int -> L4Label
-prefixLab n = L4Label $ "f_" ++ show n
+prefixLab :: Int -> L4.Label
+prefixLab n = L4.Label $ ":f_" ++ show n
 
 getIncLabCount :: CFS Int
 getIncLabCount = labCount <+= 1
 --
 --
-addFun :: L4Function -> CFS ()
+addFun :: L4.Function -> CFS ()
 addFun f = generatedFuns %= (f:)
 --
 
-unpackLets :: L4X -> [L4X] -> (L4E -> L4E)
-unpackLets tup_name xs = foldl (\ acc (x,idx) -> acc . (L4Let x (L4Aref (L4Ex tup_name) (L4Enum idx))))
+unpackLets :: L4.X -> [L4.X] -> L4.E -> L4.E
+unpackLets tup_name xs = foldl (\ acc (x,idx) -> acc . (L4.Let x (L4.Aref (L4.Ev $ L4.Vx tup_name) (L4.Ev . L4.Vnum . make4PNI $ idx))))
                                id
                                (zip xs [0..])
 
 
-compileE :: L5E -> CFS L4E
-compileE (L5Lambda xs e) = do
+compileE :: L5.E -> CFS L4.E
+compileE (L5.Lambda xs e) = do
     env <- ask
     e_c <- compileE e
     let freeXs = map compileX $ (findFreeNonDuplicates xs e) \\ M.keys env
         compiledArgs = (map compileX xs)
-        extra_args = L4X "args"
+        extra_args = make4X "args"
         fun_args = if length compiledArgs > 2
-                      then [L4X "vars", (head compiledArgs), extra_args]
-                      else (L4X "vars":compiledArgs)
+                      then [make4X "vars", (head compiledArgs), extra_args]
+                      else make4X "vars":compiledArgs
         fun_body = if length compiledArgs > 2
-                      then unpackLets extra_args (tail compiledArgs) $ e_c
+                      then unpackLets extra_args (tail compiledArgs) e_c
                       else e_c
-        vars_name = L4X "vars"
+        vars_name = make4X "vars"
     fun_lab <- newLab
-    addFun $ L4Function fun_lab fun_args (unpackLets vars_name freeXs $ fun_body)
-    return . L4MakeClosure fun_lab . L4NewTuple $ map L4Ex freeXs
+    addFun $ L4.Fun fun_lab fun_args (unpackLets vars_name freeXs fun_body)
+    return . L4.MakeClosure fun_lab . L4.NewTuple $ map (L4.Ev . L4.Vx) freeXs
 
 -- If x is in the ReaderT env, it means it is bound to a function which we
 -- have optimized to have no closure. If we reach this case it means the
 -- function will "escape" and be returned by a function. This would ambush
 -- a potential caller because they won't know it doesn't have a closure, so
 -- we compile it to have a closure here.
-compileE (L5Ex x) = do
+compileE (L5.Ex x) = do
     env <- ask
     case M.lookup x env of
-        Nothing -> return $ L4Ex (compileX x)
-        Just (_,args) -> compileE (L5Lambda args (L5Apply (L5Ex x) (map L5Ex args)))
+        Nothing -> return . L4.Ev . L4.Vx . compileX $ x
+        Just (_,args) -> compileE (L5.Lambda args (L5.Apply (L5.Ex x) (map L5.Ex args)))
 
-compileE (L5Let x e1 e2) = do
+compileE (L5.Let x e1 e2) = do
     [e1_c, e2_c] <- compileEs [e1,e2]
-    return $ L4Let (compileX x) e1_c e2_c
+    return $ L4.Let (compileX x) e1_c e2_c
 
-compileE (L5LetRec x e1 e2) = case e1 of
-    L5Lambda args body -> if (length $ findFreeNonDuplicates (x:args) body) == 0
+compileE (L5.LetRec x e1 e2) = case e1 of
+    L5.Lambda args body -> if null (findFreeNonDuplicates (x:args) body)
                              -- Here we compile the function without
                              -- a closure, for efficiency reasons. We
                              -- insert it into the ReaderT env so we will
@@ -123,7 +138,7 @@ compileE (L5LetRec x e1 e2) = case e1 of
                                 body_c <- local (M.insert x (fun_lab,args)) $ compileE body
                                 -- Do extra args here
                                 let fun_args = map compileX args
-                                    extra_args = L4X "args"
+                                    extra_args = make4X "args"
                                     compiledArgs = map compileX args
                                     packed_fun_args = if length fun_args > 3
                                                          then (take 2 fun_args) ++ [extra_args]
@@ -132,133 +147,133 @@ compileE (L5LetRec x e1 e2) = case e1 of
                                                            then unpackLets extra_args $ drop 2 compiledArgs
                                                            else id
                                     fun_body = unpack_extra_args body_c
-                                addFun $ L4Function fun_lab packed_fun_args fun_body
+                                addFun $ L4.Fun fun_lab packed_fun_args fun_body
                                 local (M.insert x (fun_lab,args)) $ compileE e2
                              else normalLetRec
 
     _ -> normalLetRec
     where normalLetRec = do
                 let x_c = compileX x
-                    xref = L5Apply (L5Primitive L5Aref) [(L5Ex x), (L5Enum 0)]
+                    xref = L5.Apply (L5.Eprim L5.Aref) [(L5.Ex x), (L5.Enum $ make5PNI 0)]
                     e1_subbed = substituteE x xref e1
                     e2_subbed = substituteE x xref e2
                 [e1_c,e2_c] <- compileEs [e1_subbed,e2_subbed]
-                return $ L4Let x_c (L4NewTuple [(L4Enum 0)])
-                                   (L4Begin (L4Aset (L4Ex x_c) (L4Enum 0) e1_c)
+                return $ L4.Let x_c (L4.NewTuple [(L4.Ev $ L4.Vnum $ make4PNI 0)])
+                                   (L4.Begin (L4.Aset (L4.Ev $ L4.Vx x_c) (L4.Ev . L4.Vnum . make4PNI $ 0) e1_c)
                                             e2_c)
 
-compileE (L5If tst thn els) = do
+compileE (L5.If tst thn els) = do
     [tst_c,thn_c,els_c] <- compileEs [tst,thn,els]
-    return $ L4If tst_c thn_c els_c
+    return $ L4.If tst_c thn_c els_c
 
-compileE (L5NewTuple es) = do
+compileE (L5.NewTuple es) = do
     es_c <- compileEs es
-    return $ L4NewTuple es_c
+    return $ L4.NewTuple es_c
 
-compileE (L5Begin e1 e2) = do
+compileE (L5.Begin e1 e2) = do
     [e1_c,e2_c] <- compileEs [e1,e2]
-    return $ L4Begin e1_c e2_c
+    return $ L4.Begin e1_c e2_c
 
-compileE (L5Apply f as) = case f of
-    (L5Lambda xs e) -> do
+compileE (L5.Apply f as) = case f of
+    (L5.Lambda xs e) -> do
         letStack <- foldM (\ acc (x,a) -> do
                                     a_c <- compileE a
-                                    return $ acc . (L4Let (compileX x) a_c))
+                                    return $ acc . (L4.Let (compileX x) a_c))
                           id
                           (zip xs as)
         e_c <- compileE e
         return $ letStack e_c
-    (L5Primitive p) -> case p of
-        L5Print -> do
-            arg_c <- compileE (as !! 0)
-            return $ L4Print arg_c
-        L5NewArray -> do
+    (L5.Eprim p) -> case p of
+        L5.Print -> do
+            arg_c <- compileE (head as) 
+            return $ L4.Print arg_c
+        L5.NewArray -> do
             [a1_c, a2_c] <- compileEs $ take 2 as
-            return $ L4NewArray a1_c a2_c
-        L5Aref -> do
+            return $ L4.NewArray a1_c a2_c
+        L5.Aref -> do
             [a1_c, a2_c] <- compileEs $ take 2 as
-            return $ L4Aref a1_c a2_c
-        L5Aset -> do
+            return $ L4.Aref a1_c a2_c
+        L5.Aset -> do
             [a1_c, a2_c, a3_c] <- compileEs $ take 3 as
-            return $ L4Aset a1_c a2_c a3_c
-        L5Alen -> do
-            a_c <- compileE (as !! 0)
-            return $ L4Alen a_c
-        L5pb bop -> do
+            return $ L4.Aset a1_c a2_c a3_c
+        L5.Alen -> do
+            a_c <- compileE (head as) 
+            return $ L4.Alen a_c
+        L5.Pb bop -> do
             [a1_c, a2_c] <- compileEs $ take 2 as
-            return $ L4Binop (compileBiopHead bop) a1_c a2_c
-        L5pp p -> do
-            a1_c <- compileE (as !! 0)
-            return $ L4Predicate (compilePredHead p) a1_c
-    (L5Ex x) -> do
+            return $ L4.Binop (compileBiopHead bop) a1_c a2_c
+        L5.Pp pred' -> do
+            a1_c <- compileE (head as)
+            return $ L4.Predicate (compilePredHead pred') a1_c
+    (L5.Ex x) -> do
         env <- ask
         case M.lookup x env of
             Nothing -> genericApply
             Just (fun_lab,_) -> do
                 as_c <- compileEs as
                 let fun_args = if length as_c > 3
-                                  then (take 2 as_c) ++ [L4NewTuple (drop 2 as_c)]
+                                  then (take 2 as_c) ++ [L4.NewTuple (drop 2 as_c)]
                                   else as_c
-                return $ L4Apply (L4Elab fun_lab) fun_args
+                return $ L4.Apply (L4.Ev $ L4.Vlab fun_lab) fun_args
     _ -> genericApply
     where genericApply = do
                 f_c <- compileE f
                 as_c <- compileEs as
                 clo_label <- new4X
-                let clo_let = L4Let clo_label f_c
-                    clos_proc = L4ClosureProc (L4Ex clo_label)
-                    clos_vars = L4ClosureVars (L4Ex clo_label)
+                let clo_let = L4.Let clo_label f_c
+                    clos_proc = L4.ClosureProc (L4.Ev $ L4.Vx clo_label)
+                    clos_vars = L4.ClosureVars (L4.Ev $ L4.Vx clo_label)
                     fun_args = if length as > 2
-                                  then [(head as_c), L4NewTuple (tail as_c)]
+                                  then [(head as_c), L4.NewTuple (tail as_c)]
                                   else as_c
-                return $ clo_let $ L4Apply clos_proc (clos_vars:fun_args)
+                return $ clo_let $ L4.Apply clos_proc (clos_vars:fun_args)
 
-compileE (L5Primitive p) = case p of
-    L5Print -> oneArityLambda L5Print
-    L5NewArray -> twoArityLambda L5NewArray
-    L5Aref -> twoArityLambda L5Aref
-    L5Aset -> threeArityLambda L5Aset
-    L5Alen -> oneArityLambda L5Alen
-    L5pb bop -> twoArityLambda (L5pb bop)
-    L5pp pd -> oneArityLambda (L5pp pd)
+compileE (L5.Eprim p) = case p of
+    L5.Print -> oneArityLambda L5.Print
+    L5.NewArray -> twoArityLambda L5.NewArray
+    L5.Aref -> twoArityLambda L5.Aref
+    L5.Aset -> threeArityLambda L5.Aset
+    L5.Alen -> oneArityLambda L5.Alen
+    L5.Pb bop -> twoArityLambda (L5.Pb bop)
+    L5.Pp pd -> oneArityLambda (L5.Pp pd)
 
-compileE (L5Enum n) = return $ L4Enum n
+compileE (L5.Enum n) = return . L4.Ev . L4.Vnum . compilePNI $ n
 
 
-compileEs :: [L5E] -> CFS [L4E]
+compileEs :: [L5.E] -> CFS [L4.E]
 compileEs = mapM compileE
 
 
 -- Lambdas
-genericArityLambda :: [L5X] -> L5prim -> CFS L4E
-genericArityLambda as p = compileE (L5Lambda as (L5Apply (L5Primitive p) (map L5Ex as)))
+genericArityLambda :: [L5.X] -> L5.Prim -> CFS L4.E
+genericArityLambda as p = compileE (L5.Lambda as (L5.Apply (L5.Eprim p) (map L5.Ex as)))
 --
-oneArityLambda :: L5prim -> CFS L4E
-oneArityLambda = genericArityLambda [(L5X "x")]
-twoArityLambda :: L5prim -> CFS L4E
-twoArityLambda = genericArityLambda [(L5X "x"), (L5X "y")]
-threeArityLambda :: L5prim -> CFS L4E
-threeArityLambda = genericArityLambda [(L5X "x"), (L5X "y"), (L5X "z")]
+oneArityLambda :: L5.Prim -> CFS L4.E
+oneArityLambda = genericArityLambda [(make5X "x")]
+twoArityLambda :: L5.Prim -> CFS L4.E
+twoArityLambda = genericArityLambda [(make5X "x"), (make5X "y")]
+threeArityLambda :: L5.Prim -> CFS L4.E
+threeArityLambda = genericArityLambda [(make5X "x"), (make5X "y"), (make5X "z")]
 
 
 
-substituteE :: L5X -> L5E -> L5E -> L5E
-substituteE t r e@(L5Lambda xs body) = if t `elem` xs
+substituteE :: L5.X -> L5.E -> L5.E -> L5.E
+substituteE t r e@(L5.Lambda xs body) = if t `elem` xs
                                        then e
-                                       else singleSub (L5Lambda xs) (substituteE t r) body
-substituteE t r e@(L5Ex x) = if x == t
+                                       else singleSub (L5.Lambda xs) (substituteE t r) body
+substituteE t r e@(L5.Ex x) = if x == t
                                 then r
                                 else e
-substituteE t r (L5Let x e1 e2) = if x == t
-                                       then singleSub (\ v -> L5Let x v e2) (substituteE t r) e1
-                                       else doubleSub (L5Let x) (substituteE t r) e1 e2
-substituteE t r e@(L5LetRec x e1 e2) = if x == t
+substituteE t r (L5.Let x e1 e2) = if x == t
+                                       then singleSub (\ v -> L5.Let x v e2) (substituteE t r) e1
+                                       else doubleSub (L5.Let x) (substituteE t r) e1 e2
+substituteE t r e@(L5.LetRec x e1 e2) = if x == t
                                           then e
-                                          else doubleSub (L5LetRec x) (substituteE t r) e1 e2
-substituteE t r (L5If e1 e2 e3) = tripleSub L5If (substituteE t r) e1 e2 e3
-substituteE t r (L5NewTuple es) = L5NewTuple $ map (substituteE t r) es
-substituteE t r (L5Begin e1 e2) = doubleSub L5Begin (substituteE t r) e1 e2
-substituteE t r (L5Apply f as) = L5Apply (substituteE t r f) $ map (substituteE t r) as
+                                          else doubleSub (L5.LetRec x) (substituteE t r) e1 e2
+substituteE t r (L5.If e1 e2 e3) = tripleSub L5.If (substituteE t r) e1 e2 e3
+substituteE t r (L5.NewTuple es) = L5.NewTuple $ map (substituteE t r) es
+substituteE t r (L5.Begin e1 e2) = doubleSub L5.Begin (substituteE t r) e1 e2
+substituteE t r (L5.Apply f as) = L5.Apply (substituteE t r f) $ map (substituteE t r) as
 substituteE _ _ e = e
 
 singleSub ::  (t1 -> t) -> (t2 -> t1) -> t2 -> t
@@ -268,78 +283,83 @@ doubleSub f subF e1 e2 = f (subF e1) (subF e2)
 tripleSub :: (t1 -> t1 -> t1 -> t) -> (t2 -> t1) -> t2 -> t2 -> t2 -> t
 tripleSub f subF e1 e2 e3 = f (subF e1) (subF e2) (subF e3)
 
-findFreeNonDuplicates :: [L5X] -> L5E -> [L5X]
+findFreeNonDuplicates :: [L5.X] -> L5.E -> [L5.X]
 findFreeNonDuplicates bound = nub . findFree bound
 
-findFree :: [L5X] -> L5E -> [L5X]
-findFree bound (L5Lambda args e) = findFree (union bound args) e
-findFree bound (L5Ex x) = [x] \\ bound
-findFree bound (L5Let x e1 e2) = (findFree bound e1) ++ (findFree (union [x] bound) e2)
-findFree bound (L5LetRec x e1 e2) = let newBound = (union [x] bound)
-                                    in concatMap (findFree newBound) [e1,e2]
-findFree bound (L5If e1 e2 e3) = concatMap (findFree bound) [e1,e2,e3]
-findFree bound (L5NewTuple es) = concatMap (findFree bound) es
-findFree bound (L5Begin e1 e2) = concatMap (findFree bound) [e1,e2]
-findFree bound (L5Apply f as) = concatMap (findFree bound) (f:as)
+findFree :: [L5.X] -> L5.E -> [L5.X]
+findFree bound (L5.Lambda args e) = findFree (union bound args) e
+findFree bound (L5.Ex x) = [x] \\ bound
+findFree bound (L5.Let x e1 e2) = (findFree bound e1) ++ (findFree (union [x] bound) e2)
+findFree bound (L5.LetRec x e1 e2) = let newBound = (union [x] bound)
+                                     in concatMap (findFree newBound) [e1,e2]
+findFree bound (L5.If e1 e2 e3) = concatMap (findFree bound) [e1,e2,e3]
+findFree bound (L5.NewTuple es) = concatMap (findFree bound) es
+findFree bound (L5.Begin e1 e2) = concatMap (findFree bound) [e1,e2]
+findFree bound (L5.Apply f as) = concatMap (findFree bound) (f:as)
 findFree _ _ = []
 
 
 
-compileBiopHead :: L5biop -> L4biop
-compileBiopHead L5Add = L4Add
-compileBiopHead L5Sub = L4Sub
-compileBiopHead L5Mult = L4Mult
-compileBiopHead L5LT = L4bcmp L4LessThan
-compileBiopHead L5LTE = L4bcmp L4LessThanEqual
-compileBiopHead L5Eq = L4bcmp L4Equal
+compileBiopHead :: L5.Biop -> L4.Biop
+compileBiopHead L5.Add = L4.Add
+compileBiopHead L5.Sub = L4.Sub
+compileBiopHead L5.Mult = L4.Mult
+compileBiopHead L5.LessThan = L4.LessThan
+compileBiopHead L5.LessThanEqual = L4.LessThanEqual
+compileBiopHead L5.Equal = L4.Equal
 
-compilePredHead :: L5pred -> L4pred
-compilePredHead L5IsNumber = L4IsNumber
-compilePredHead L5IsA = L4IsA
+compilePredHead :: L5.Pred -> L4.Pred
+compilePredHead L5.IsNum = L4.IsNum
+compilePredHead L5.IsA = L4.IsA
 
 
-compileX :: L5X -> L4X
-compileX (L5X name) = L4X name
+compileX :: L5.X -> L4.X
+compileX (L5.Var var) = L4.Var $ compileVariable var
 
+compileVariable :: L5.Variable -> L4.Variable
+compileVariable (L5.Variable s) = L4.Variable s
+
+compilePNI :: L5.PosNegInteger -> L4.PosNegInteger
+compilePNI (L5.PosNegInteger s) = L4.PosNegInteger s
 
 -- Rename let-bound variables
-renamePass :: M.Map L5X L5X -> L5E -> CFS L5E
-renamePass env (L5Lambda xs e) = liftM (L5Lambda xs) (renamePass newEnv e)
+renamePass :: M.Map L5.X L5.X -> L5.E -> CFS L5.E
+renamePass env (L5.Lambda xs e) = liftM (L5.Lambda xs) (renamePass newEnv e)
     where
         newEnv = foldl (\ acc x -> M.delete x acc) env xs
 
-renamePass env e@(L5Ex x) = case M.lookup x env of
+renamePass env e@(L5.Ex x) = case M.lookup x env of
     Nothing -> return e
-    Just xN -> return $ L5Ex xN
+    Just xN -> return $ L5.Ex xN
 
-renamePass env (L5Let x d b) = do
+renamePass env (L5.Let x d b) = do
     xN <- new5X
     let newEnv = M.insert x xN env
     d_r <- renamePass env d
     b_r <- renamePass newEnv b
-    return $ L5Let xN d_r b_r
+    return $ L5.Let xN d_r b_r
 
-renamePass env (L5LetRec x d b) = do
+renamePass env (L5.LetRec x d b) = do
     xN <- new5X
     let newEnv = M.insert x xN env
     [d_r,b_r] <- mapM (renamePass newEnv) [d,b]
-    return $ L5LetRec xN d_r b_r
+    return $ L5.LetRec xN d_r b_r
 
-renamePass env (L5If tst thn els) = do
+renamePass env (L5.If tst thn els) = do
     [tst_r,thn_r,els_r] <- mapM (renamePass env) [tst,thn,els]
-    return $ L5If tst_r thn_r els_r
+    return $ L5.If tst_r thn_r els_r
 
-renamePass env (L5NewTuple es) = do
+renamePass env (L5.NewTuple es) = do
     es_r <- mapM (renamePass env) es
-    return $ L5NewTuple es_r
+    return $ L5.NewTuple es_r
 
-renamePass env (L5Begin e1 e2) = do
+renamePass env (L5.Begin e1 e2) = do
     [e1_r,e2_r] <- mapM (renamePass env) [e1,e2]
-    return $ L5Begin e1_r e2_r
+    return $ L5.Begin e1_r e2_r
 
-renamePass env (L5Apply f as) = do
+renamePass env (L5.Apply f as) = do
     (f_r:as_r) <- mapM (renamePass env) (f:as)
-    return $ L5Apply f_r as_r
+    return $ L5.Apply f_r as_r
 
 renamePass _ e = return e
 
