@@ -117,19 +117,6 @@ findSuccessors ls idx = case ls !! idx of
 liveSet :: [W] -> S.Set W
 liveSet = S.fromList
 
-{- Specific registers -}
-argRegW :: [W]
-argRegW = [RDI, RSI, RDX, (Wcx RCX), R8, R9]
-
-resultRegW :: [W]
-resultRegW = [RAX]
-
-callerSaveRegW :: [W]
-callerSaveRegW = [R10, R11]
-
-calleeSaveRegW :: [W]
-calleeSaveRegW = [RBX, RBP, R12, R13, R14, R15]
-
 gen :: Instruction -> S.Set W
 gen (IAssign _ (Sx (Xw w))) = liveSet [w]
 gen (IReadMem _ (Xw w) _) = liveSet [w]
