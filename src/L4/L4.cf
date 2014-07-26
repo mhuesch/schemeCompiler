@@ -1,0 +1,50 @@
+comment ";" ;
+
+Prog. Program ::= "(" E
+                      [Function]
+                  ")" ;
+
+terminator X "" ;
+terminator V "" ;
+terminator E "" ;
+terminator Function "" ;
+
+Fun. Function ::= "(" Label "(" [X] ")" E ")" ;
+
+Let.   E ::= "(" "let" "(" "[" X E "]" ")" E ")" ;
+If.    E ::= "(" "if" E E E ")"                  ;
+Apply. E ::= "(" E [E] ")" ;
+NewArray. E ::= "(" "new-array" E E ")" ;
+NewTuple. E ::= "(" "new-tuple" [E] ")" ;
+Aref.  E ::= "(" "aref" E E ")" ;
+Aset.  E ::= "(" "aset" E E E ")" ;
+Alen.  E ::= "(" "alen" E ")" ;
+Begin. E ::= "(" "begin" E E ")" ;
+Print. E ::= "(" "print" E ")" ;
+MakeClosure. E ::= "(" "make-closure" Label E ")" ;
+ClosureProc. E ::= "(" "closure-proc" E ")" ;
+ClosureVars. E ::= "(" "closure-vars" E ")" ;
+Binop.     E ::= "(" Biop E E ")" ;
+Predicate. E ::= "(" Pred E ")" ;
+Ev.        E ::= V ;
+
+Vx.   V ::= X ;
+Vlab. V ::= Label ;
+Vnum. V ::= PosNegInteger ;
+
+Add.  Biop ::= "+" ;
+Sub.  Biop ::= "-" ;
+Mult. Biop ::= "*" ;
+LessThan.      Biop ::= "<"  ;
+LessThanEqual. Biop ::= "<=" ;
+Equal.         Biop ::= "="  ;
+
+IsNum. Pred ::= "number?" ;
+IsA.   Pred ::= "a?" ;
+
+Var. X ::= Variable ;
+
+token Label ':' (letter |  '_') (letter | digit | '_')* ;
+token PosNegInteger '-'? digit+ ;
+token Variable (letter | '_') (letter | digit | '_' | '-')* ;
+
