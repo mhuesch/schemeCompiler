@@ -148,12 +148,6 @@ compileD target isTail (L3.NewTuple vs) = do
                   ,L2.IAssign tmpW raxS]
                ++ zipWith (L2.IWriteMem (L2.Xw tmpW)) offsets vSs
                ++ [L2.IAssign target raxS]
-               {-
-          [L2.Allocate (L2.Tnum (2*(length vs) + 1)) (L2.Tnum 1)
-               ,L2.IAssign tmpW raxS]
-               ++ zipWith (\ offset s -> L2.IWriteMem tmpW offset s) offsets tupleSs
-               ++ [L2.IAssign target raxS]
-               -}
     return . addReturn isTail $ body
 
 compileD target isTail (L3.Aref v1 v2) = do
