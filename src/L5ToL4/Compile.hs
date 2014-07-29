@@ -1,8 +1,6 @@
-{-# LANGUAGE TemplateHaskell #-}
 module L5ToL4.Compile where
 
 
-import Control.Lens
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Reader
@@ -12,15 +10,13 @@ import qualified Data.Map as M
 import qualified L5.AbsL5 as L5
 import qualified L4.AbsL4 as L4
 
-data CountFunState = CountFunState { _xCount :: Int
-                                   , _labCount :: Int
-                                   , _generatedFuns :: [L4.Function]
+data CountFunState = CountFunState { xCount :: Int
+                                   , labCount :: Int
+                                   , generatedFuns :: [L4.Function]
                                    }
--- Generate lenses
-makeLenses ''CountFunState
 
 translate :: L5.Program -> L4.Program
-translate (L5.Prog e) = L4.Prog eOut (_generatedFuns cfs)
+translate (L5.Prog e) = L4.Prog eOut (generatedFuns cfs)
     where
         process e' = renamePass M.empty e' >>= compileE
         (eOut,cfs) = runCFS startCFS M.empty (process e)
@@ -71,7 +67,11 @@ prefix5X :: Int -> L5.X
 prefix5X n = make5X $ "v_" ++ show n
 
 getIncXCount :: CFS Int
-getIncXCount = xCount <+= 1
+--getIncXCount = xCount <+= 1
+getIncXCount = do
+    cfs@(CountFunState xc _ _) <- get
+    put cfs{ xCount = xc + 1 }
+    return xc
 --
 --
 newLab :: CFS L4.Label
@@ -81,11 +81,18 @@ prefixLab :: Int -> L4.Label
 prefixLab n = L4.Label $ ":f_" ++ show n
 
 getIncLabCount :: CFS Int
-getIncLabCount = labCount <+= 1
+--getIncLabCount = labCount <+= 1
+getIncLabCount = do
+    cfs@(CountFunState _ lc _) <- get
+    put cfs{ labCount = lc + 1 }
+    return lc
 --
 --
 addFun :: L4.Function -> CFS ()
-addFun f = generatedFuns %= (f:)
+--addFun f = generatedFuns %= (f:)
+addFun f = do
+    cfs@(CountFunState _ _ gfs) <- get
+    put cfs{ generatedFuns = (f:gfs) }
 --
 
 unpackLets :: L4.X -> [L4.X] -> L4.E -> L4.E
