@@ -1,0 +1,41 @@
+comment ";" ;
+
+Prog. Program ::= E ;
+
+terminator X "" ;
+terminator E "" ;
+
+Lambda. E ::= "(" "lambda" "(" [X] ")" E ")" ;
+Let.    E ::= "(" "let" "(" "[" X E "]" ")" E ")" ;
+LetRec. E ::= "(" "letrec" "(" "[" X E "]" ")" E ")" ;
+If.     E ::= "(" "if" E E E ")"                  ;
+NewTuple. E ::= "(" "new-tuple" [E] ")" ;
+Begin.  E ::= "(" "begin" E E ")" ;
+Apply.  E ::= "(" E [E] ")" ;
+Enum.   E ::= PosNegInteger ;
+Eprim.  E ::= Prim ;
+Ex.     E ::= X ;
+
+Pb. Prim ::= Biop ;
+Pp. Prim ::= Pred ;
+Print. Prim ::= "print" ;
+NewArray. Prim ::= "new-array" ;
+Aref. Prim ::= "aref" ;
+Aset. Prim ::= "aset" ;
+Alen. Prim ::= "alen" ;
+
+Add.  Biop ::= "+" ;
+Sub.  Biop ::= "-" ;
+Mult. Biop ::= "*" ;
+LessThan.      Biop ::= "<"  ;
+LessThanEqual. Biop ::= "<=" ;
+Equal.         Biop ::= "="  ;
+
+IsNum. Pred ::= "number?" ;
+IsA.   Pred ::= "a?" ;
+
+Var. X ::= Variable ;
+
+token PosNegInteger '-'? digit+ ;
+token Variable (letter | '_') (letter | digit | '_' | '-')* ;
+

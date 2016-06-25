@@ -1,0 +1,99 @@
+comment ";" ;
+
+
+Prog. Program ::= "(" Label
+                      [Function] ")" ;
+
+terminator Instruction "" ;
+terminator Function "" ;
+
+
+Fun. Function ::= "(" Label N N [Instruction] ")" ;
+
+
+Sp. Spill ::= "(" [Instruction] ")" Variable PosNegInteger Variable ;
+PLI. ParenListInstruction ::= "(" [Instruction] ")" ;
+
+
+IAssign.     Instruction ::= "(" W "<-" S ")"                 ;
+IReadMem.    Instruction ::= "(" W "<-" "(" "mem" X N ")" ")" ;
+IReadArg.    Instruction ::= "(" W "<-" "(" "stack-arg" N ")" ")" ;
+IWriteMem.   Instruction ::= "(" "(" "mem" X N ")" "<-" S ")" ;
+
+IArith.      Instruction ::= "(" W AOP T ")"        ;
+IShiftCX.    Instruction ::= "(" W SOP CX ")"       ;
+IShiftN.     Instruction ::= "(" W SOP N  ")"       ;
+ISaveCmp.    Instruction ::= "(" W "<-" T CMP T ")" ;
+
+ILabel.      Instruction ::= Label                               ;
+IGoto.       Instruction ::= "(" "goto" Label ")"                ;
+ICjump.      Instruction ::= "(" "cjump" T CMP T Label Label ")" ;
+
+ICallNative. Instruction ::= "(" "call" U PosNegInteger ")"      ;
+ICallRuntime.Instruction ::= "(" "call" R PosNegInteger ")"      ;
+ITailCall.   Instruction ::= "(" "tail-call" U PosNegInteger ")" ;
+IReturn.     Instruction ::= "(" "return" ")"      ;
+
+Print.      R ::= "print"       ;
+Allocate.   R ::= "allocate"    ;
+ArrayError. R ::= "array-error" ;
+
+
+Sx.   S ::= X     ;
+Snum. S ::= N     ;
+Slab. S ::= Label ;
+
+
+Ux.   U ::= X     ;
+Ulab. U ::= Label ;
+
+
+Tx.   T ::= X ;
+Tnum. T ::= N ;
+
+
+Xw.   X ::= W     ;
+RSP.  X ::= "rsp" ;
+
+
+RCX. CX ::= "rcx"    ;
+Var. CX ::= Variable ;
+
+Wcx. W ::= CX     ;
+RAX. W ::= "rax"  ;
+RBX. W ::= "rbx"  ;
+RDX. W ::= "rdx"  ;
+RSI. W ::= "rsi"  ;
+RDI. W ::= "rdi"  ;
+RBP. W ::= "rbp"  ;
+R8.  W ::= "r8"   ;
+R9.  W ::= "r9"   ;
+R10. W ::= "r10"  ;
+R11. W ::= "r11"  ;
+R12. W ::= "r12"  ;
+R13. W ::= "r13"  ;
+R14. W ::= "r14"  ;
+R15. W ::= "r15"  ;
+
+
+Add.  AOP ::= "+=" ;
+Sub.  AOP ::= "-=" ;
+Mult. AOP ::= "*=" ;
+And.  AOP ::= "&=" ;
+
+
+ShiftLeft.  SOP ::= "<<=" ;
+ShiftRight. SOP ::= ">>=" ;
+
+
+LessThan.      CMP ::= "<"  ;
+LessThanEqual. CMP ::= "<=" ;
+Equal.         CMP ::= "="  ;
+
+
+token Label ':' (letter |  '_') (letter | digit | '_')* ;
+token PosNegInteger '-'? digit+ ;
+token Variable (letter | '_') (letter | digit | '_' | '-')* ;
+
+Num. N ::= PosNegInteger ;
+

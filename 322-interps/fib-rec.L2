@@ -2,27 +2,34 @@
 ;;   fib(0) = 1
 ;;   fib(1) = 1
 ;;   fib(n) = fib(n-1) + fib(n-2)
-;; it computes the answer as a regular L1 number and
-;; then encodes the number just before calling print
+;;
+;; this code works with encoded numbers, so does these 
+;; computations when you actually look at the code:
+;;  fib(n) = 3, where n <= 3
+;;  fib(n) = fib(n-2) + fib (n-4) - 1
+;;
+;; your compiler probably won't produce code that is
+;; that smart, but it is theoretically possible
 
 (((eax <- 10)   ;; initial argument to fib.
-  (call :fib)   ;; the call
-  (eax += eax)  ;; encode & print
-  (eax += 1)
+  (eax += eax)  ;; start encoding initial argument
+  (eax += 1)    ;; finish encoding initial argument
+  (call :fib)   ;; make the call and then print the result
   (eax <- (print eax)))
  (:fib
-  (cjump eax < 2 :base :recur)
+  (cjump eax <= 3 :base :recur)
   :base            ;; non-recursive case
-  (eax <- 1)       ;; store result
+  (eax <- 3)       ;; store result
   (return)         ;; return
   :recur           ;; recursive case
   (arg <- eax)     ;; save the argument
-  (arg -= 1)       ;; decrement the argument
+  (arg -= 2)       ;; decrement the argument
   (eax <- arg)     ;; prepare the argument
   (call :fib)      ;; make first recursive call
   (result <- eax)  ;; save the result of first call
-  (arg -= 1)       ;; decrement the arg again
+  (arg -= 2)       ;; decrement the arg again
   (eax <- arg)     ;; prepare the argument
   (call :fib)      ;; call
   (eax += result)  ;; sum the two results
+  (eax -= 1)       ;; finish the sum (encoding)
   (return)))       ;; and we're done.

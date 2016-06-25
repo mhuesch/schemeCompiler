@@ -5,283 +5,246 @@ import Control.Monad
 import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
-import System.Exit (exitFailure)
-import System.Environment
-import Text.ParserCombinators.Parsec hiding (State)
 
-import L2.Grammar
-import L2.Parser
-import L2.Display
+import L2.AbsL2
 
 
-spill :: [L2Instruction] -> L2Var -> Int -> L2Var -> [L2Instruction]
+spill :: [Instruction] -> Variable -> Int -> Variable -> [Instruction]
 spill ls var offset prefix = res
     where (res, _) = runReadState (var, offset, prefix) 0 (spillInstructions ls)
 
 
 type RS a = ReaderT Env (StateT Int Identity) a
-type Env = (L2Var, Int, L2Var)
+type Env = (Variable, Int, Variable)
 
 runReadState :: Env -> Int -> RS a -> (a, Int)
 runReadState env st rs = runIdentity (runStateT (runReaderT rs env) st)
 
 
-spillInstructions :: [L2Instruction] -> RS [L2Instruction]
+spillInstructions :: [Instruction] -> RS [Instruction]
 spillInstructions ls = liftM concat $ mapM spillInstruction ls
 
+variableToX :: Variable -> X
+variableToX = Xw . Wcx . Var
 
-spillInstruction :: L2Instruction -> RS [L2Instruction]
-spillInstruction i@(L2Assign x s) = do
-    (var,varOffset,prefix) <- ask
-    case ((x == L2Xvar var),(s == L2SX (L2Xvar var))) of
+variableToW :: Variable -> W
+variableToW = Wcx . Var
+
+spillInstruction :: Instruction -> RS [Instruction]
+spillInstruction i@(IAssign w s) = do
+    (var,varOffset,_) <- ask
+    case ((w == variableToW var),(s == Sx (variableToX var))) of
         (True,True) -> return []
-        (True,False) -> return [mkUpdate varOffset s]
-        (False,True) -> return [mkRead x varOffset]
+        (True,False) -> return [mkWrite varOffset s]
+        (False,True) -> return [mkRead w varOffset]
         (False,False) -> return [i]
 
-spillInstruction i@(L2ReadMem x1 x2 readOffset) = do
+spillInstruction i@(IReadMem w x readOffset) = do
     (var,varOffset,prefix) <- ask
-    case ((x1 == L2Xvar var),(x2 == L2Xvar var)) of
+    case ((w == variableToW var),(x == variableToX var)) of
         (True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ReadMem (L2Xvar newVar) (L2Xvar newVar) readOffset)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IReadMem (variableToW newVar) (variableToX newVar) readOffset)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True,False) -> do
             newVar <- genVar prefix
-            return [(L2ReadMem (L2Xvar newVar) x2 readOffset)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(IReadMem (variableToW newVar) x readOffset)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (False,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ReadMem x1 (L2Xvar newVar) readOffset)]
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IReadMem w (variableToX newVar) readOffset)]
         (False,False) -> return [i]
 
-spillInstruction i@(L2Update x updateOffset s) = do
+spillInstruction i@(IReadArg w offset) = do
     (var,varOffset,prefix) <- ask
-    case ((x == L2Xvar var),(s == L2SX (L2Xvar var))) of
+    case w == variableToW var of
+      True -> do
+        newVar <- genVar prefix
+        return [(IReadArg (variableToW newVar) offset)
+               ,(mkWrite varOffset (Sx (variableToX newVar)))]
+      False -> return [i]
+
+spillInstruction i@(IWriteMem x updateOffset s) = do
+    (var,varOffset,prefix) <- ask
+    case ((x == variableToX var),(s == Sx (variableToX var))) of
         (True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Update (L2Xvar newVar) updateOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IWriteMem (variableToX newVar) updateOffset (Sx (variableToX newVar)))
                    ]
         (True, False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Update (L2Xvar newVar) updateOffset s)
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IWriteMem (variableToX newVar) updateOffset s)
                    ]
         (False, True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Update x updateOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IWriteMem x updateOffset (Sx (variableToX newVar)))
                    ]
         (False, False) -> return [i]
 
-spillInstruction i@(L2Arith x aop t) = do
+spillInstruction i@(IArith w aop t) = do
     (var,varOffset,prefix) <- ask
-    case ((x == L2Xvar var),(t == L2TX (L2Xvar var))) of
+    case ((w == variableToW var),(t == Tx (variableToX var))) of
         (True, True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Arith (L2Xvar newVar) aop (L2TX (L2Xvar newVar)))
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IArith (variableToW newVar) aop (Tx (variableToX newVar)))
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True, False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Arith (L2Xvar newVar) aop t)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IArith (variableToW newVar) aop t)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (False, True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Arith x aop (L2TX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IArith w aop (Tx (variableToX newVar)))
                    ]
         (False, False) -> return [i]
 
-spillInstruction i@(L2ShiftSX x1 sop x2) = do
+spillInstruction i@(IShiftCX w sop cx) = do
     (var,varOffset,prefix) <- ask
-    case ((x1 == L2Xvar var),(x2 == (L2Xvar var))) of
+    case ((w == variableToW var),(cx == Var var)) of
         (True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ShiftSX (L2Xvar newVar) sop (L2Xvar newVar))
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IShiftCX (variableToW newVar) sop (Var newVar))
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True,False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ShiftSX (L2Xvar newVar) sop x2)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IShiftCX (variableToW newVar) sop cx)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (False,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ShiftSX x1 sop (L2Xvar newVar))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IShiftCX w sop (Var newVar))
                    ]
         (False,False) -> return [i]
 
-spillInstruction i@(L2ShiftNum x sop n) = do
+spillInstruction i@(IShiftN w sop n) = do
     (var,varOffset,prefix) <- ask
-    case (x == L2Xvar var) of
+    case (w == variableToW var) of
         True -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ShiftNum (L2Xvar newVar) sop n)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(IShiftN (variableToW newVar) sop n)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         False -> return [i]
 
-spillInstruction i@(L2SaveCmp x t1 cmp t2) = do
+spillInstruction i@(ISaveCmp w t1 cmp t2) = do
     (var,varOffset,prefix) <- ask
-    case ((x == L2Xvar var),(t1 == (L2TX (L2Xvar var))),(t2 == (L2TX (L2Xvar var)))) of
+    case ((w == variableToW var),(t1 == (Tx (variableToX var))),(t2 == (Tx (variableToX var)))) of
         (True,True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp (L2Xvar newVar) (L2TX (L2Xvar newVar)) cmp (L2TX (L2Xvar newVar)))
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp (variableToW newVar) (Tx (variableToX newVar)) cmp (Tx (variableToX newVar)))
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True,True,False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp (L2Xvar newVar) (L2TX (L2Xvar newVar)) cmp t2)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp (variableToW newVar) (Tx (variableToX newVar)) cmp t2)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True,False,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp (L2Xvar newVar) t1 cmp (L2TX (L2Xvar newVar)))
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp (variableToW newVar) t1 cmp (Tx (variableToX newVar)))
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (True,False,False) -> do
             newVar <- genVar prefix
-            return [(L2SaveCmp (L2Xvar newVar) t1 cmp t2)
-                   ,(mkUpdate varOffset (L2SX (L2Xvar newVar)))
+            return [(ISaveCmp (variableToW newVar) t1 cmp t2)
+                   ,(mkWrite varOffset (Sx (variableToX newVar)))
                    ]
         (False,True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp x (L2TX (L2Xvar newVar)) cmp (L2TX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp w (Tx (variableToX newVar)) cmp (Tx (variableToX newVar)))
                    ] 
         (False,True,False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp x (L2TX (L2Xvar newVar)) cmp t2)
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp w (Tx (variableToX newVar)) cmp t2)
                    ] 
         (False,False,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2SaveCmp x t1 cmp (L2TX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ISaveCmp w t1 cmp (Tx (variableToX newVar)))
                    ]
         (False,False,False) -> return [i]
 
-spillInstruction i@(L2ILab _) = return [i]
-spillInstruction i@(L2Goto _) = return [i]
+spillInstruction i@(ILabel _) = return [i]
+spillInstruction i@(IGoto _) = return [i]
 
-spillInstruction i@(L2Cjump t1 cmp t2 l1 l2) = do
+spillInstruction i@(ICjump t1 cmp t2 l1 l2) = do
     (var,varOffset,prefix) <- ask
-    case ((t1 == L2TX (L2Xvar var)),(t2 == L2TX (L2Xvar var))) of
+    case ((t1 == Tx (variableToX var)),(t2 == Tx (variableToX var))) of
         (True,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Cjump (L2TX (L2Xvar newVar)) cmp (L2TX (L2Xvar newVar)) l1 l2)
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ICjump (Tx (variableToX newVar)) cmp (Tx (variableToX newVar)) l1 l2)
                    ]
         (True,False) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Cjump (L2TX (L2Xvar newVar)) cmp t2 l1 l2)
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ICjump (Tx (variableToX newVar)) cmp t2 l1 l2)
                    ]
         (False,True) -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Cjump t1 cmp (L2TX (L2Xvar newVar)) l1 l2)
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ICjump t1 cmp (Tx (variableToX newVar)) l1 l2)
                    ]
         (False,False) -> return [i]
 
-spillInstruction i@(L2Call u) = do
+spillInstruction i@(ICallNative u arity) = do
     (var,varOffset,prefix) <- ask
-    case (u == L2UX (L2Xvar var)) of
+    case (u == Ux (variableToX var)) of
         True -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Call (L2UX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ICallNative (Ux (variableToX newVar)) arity)
                    ]
         False -> return [i]
 
-spillInstruction i@(L2TailCall u) = do
+spillInstruction i@ICallRuntime{} = return [i]
+
+spillInstruction i@(ITailCall u arity) = do
     (var,varOffset,prefix) <- ask
-    case (u == L2UX (L2Xvar var)) of
+    case (u == Ux (variableToX var)) of
         True -> do
             newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2TailCall (L2UX (L2Xvar newVar)))
+            return [(mkRead (variableToW newVar) varOffset)
+                   ,(ITailCall (Ux (variableToX newVar)) arity)
                    ]
         False -> return [i]
 
-spillInstruction i@(L2Return) = return [i]
-
-spillInstruction i@(L2Print t) = do
-    (var,varOffset,prefix) <- ask
-    case (t == L2TX (L2Xvar var)) of
-        True -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Print (L2TX (L2Xvar newVar)))
-                   ]
-        False -> return [i]
-        
-spillInstruction i@(L2Allocate t1 t2) = do
-    (var,varOffset,prefix) <- ask
-    case ((t1 == L2TX (L2Xvar var)),(t2 == L2TX (L2Xvar var))) of
-        (True,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
-                   ]
-        (True,False) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate (L2TX (L2Xvar newVar)) t2)
-                   ]
-        (False,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2Allocate t1 (L2TX (L2Xvar newVar)))
-                   ]
-        (False,False) -> return [i]
-
-spillInstruction i@(L2ArrayError t1 t2) = do
-    (var,varOffset,prefix) <- ask
-    case ((t1 == L2TX (L2Xvar var)),(t2 == L2TX (L2Xvar var))) of
-        (True,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError (L2TX (L2Xvar newVar)) (L2TX (L2Xvar newVar)))
-                   ]
-        (True,False) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError (L2TX (L2Xvar newVar)) t2)
-                   ]
-        (False,True) -> do
-            newVar <- genVar prefix
-            return [(mkRead (L2Xvar newVar) varOffset)
-                   ,(L2ArrayError t1 (L2TX (L2Xvar newVar)))
-                   ]
-        (False,False) -> return [i]
+spillInstruction i@IReturn = return [i]
 
 
-
-genVar :: (Num a, Show a, MonadState a m) => L2Var -> m L2Var
-genVar (L2Var name) = do
+genVar :: (Num a, Show a, MonadState a m) => Variable -> m Variable
+genVar (Variable name) = do
     num <- get
     put $ num + 1
-    return $ L2Var $ name ++ show num
+    return $ Variable $ name ++ show num
 
-mkUpdate :: Int -> L2S -> L2Instruction
-mkUpdate o s = (L2Update (L2Xreg (L2EBP)) o s)
+intToN :: Int -> N
+intToN = Num . PosNegInteger . show
 
-mkRead :: L2X -> Int -> L2Instruction
-mkRead x o = (L2ReadMem x (L2Xreg (L2EBP)) o)
+mkWrite :: Int -> S -> Instruction
+mkWrite o = IWriteMem RSP (intToN o) 
+
+mkRead :: W -> Int -> Instruction
+mkRead w o = IReadMem w RSP (intToN o)

@@ -1,9 +1,12 @@
 *.DS_Store
-prog.S
 
 *.hi
 *.o
 *.S
+*.L1
+*.L2
+*.bak
+*.log
 
 a.out
 L1c
@@ -14,9 +17,23 @@ L2c
 L3c
 L4c
 L5c
+Lc
 
+src/L1/*
+!src/L1/L1.cf
+src/L2/*
+!src/L2/L2.cf
+src/L3/*
+!src/L3/L3.cf
+src/L4/*
+!src/L4/L4.cf
+src/L5/*
+!src/L5/L5.cf
+src/Makefile
 
 322-interps/tests*
 
 322-interps/L*
 322-interps/run-test-fests
+
+.vagrant

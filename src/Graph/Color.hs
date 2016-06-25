@@ -8,20 +8,20 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Data.List
 
-import L2.Grammar
-import L2.Display
+import L2.AbsL2
+import L2.PrintL2
 import Graph.Graph
 import Graph.GraphGlue
 
 
 {- Coloring -}
-type Coloring = [(L2X,L2Reg)]
+type Coloring = [(W,W)]
 
-addColor :: L2X -> L2Reg -> Coloring -> Coloring
-addColor x r cs = (x,r):cs
+addColor :: W -> W -> Coloring -> Coloring
+addColor w r cs = (w,r):cs
 
-lookupColor :: Coloring -> L2X -> Maybe L2Reg
-lookupColor cs x = lookup x cs
+lookupColor :: Coloring -> W -> Maybe W
+lookupColor cs w = lookup w cs
 
 
 {- Coloring monad -}
@@ -38,41 +38,36 @@ runColor g = runRMI g colorComp
 colorComp :: RMI Coloring
 colorComp = do
     g <- ask
-    let f (L2Xvar v) = [v]
-        f _ = []
-        vars = concatMap f $ keys g
+    let vars = keys g
     foldM attemptColor coloredRegs vars
-    
 
-attemptColor :: Coloring -> L2Var -> RMI Coloring
-attemptColor cs v = do
+
+attemptColor :: Coloring -> W -> RMI Coloring
+attemptColor cs w = do
     g <- ask
-    let fixedNeighbors = filterNeighbors (L2Xvar v) FixedEdge g
-        prohibitedColors = catMaybes $ map (lookupColor cs) fixedNeighbors
+    let fixedNeighbors = filterNeighbors w FixedEdge g
+        prohibitedColors = mapMaybe (lookupColor cs) fixedNeighbors
     case colors \\ prohibitedColors of
-        [] -> fail "no colors"
-        x:xs -> return $ addColor (L2Xvar v) x cs
+        []  -> fail "no colors"
+        c:_ -> return $ addColor w c cs
 
 
 {- Register stuff -}
 coloredRegs :: Coloring
-coloredRegs = map (\ r -> (L2Xreg r, r)) colors
-
-colors :: [L2Reg]
-colors = [L2EBX, L2ECX, L2EDX, L2EDI, L2ESI, L2EAX]
+coloredRegs = map (\ w -> (w, w)) colors
 
 
 {- Display -}
 displayColors :: Maybe Coloring -> String
 displayColors Nothing = "#f"
-displayColors (Just xs) = "(" ++ (concat . intersperse "\n" . sort . map displayVarColor . getVarColors $ xs) ++ ")"
+displayColors (Just xs) = "(" ++ (intercalate "\n" . sort . map displayVarColor . getVarColors $ xs) ++ ")"
 
-getVarColors :: Coloring -> [(L2Var,L2Reg)]
+getVarColors :: Coloring -> [(Variable,W)]
 getVarColors = concatMap f
     where
-        f ((L2Xvar v),r) = [(v,r)]
+        f (Wcx (Var v), r) = [(v,r)]
         f _ = []
 
-displayVarColor :: (L2Var,L2Reg) -> String
-displayVarColor (v,r) = "(" ++ displayVar v ++ " " ++ displayReg r ++ ")"
+displayVarColor :: (Variable,W) -> String
+displayVarColor (v,r) = "(" ++ printTree v ++ " " ++ printTree r ++ ")"
 

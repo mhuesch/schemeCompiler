@@ -2,30 +2,37 @@
 ;;   fib(0) = 1
 ;;   fib(1) = 1
 ;;   fib(n) = fib(n-1) + fib(n-2)
-;; it computes the answer as a regular L1 number and
-;; then encodes the number just before calling print
+;;
+;; this code works with encoded numbers, so does these 
+;; computations when you actually look at the code:
+;;  fib(n) = 3, where n <= 3
+;;  fib(n) = fib(n-2) + fib (n-4) - 1
+;;
+;; your compiler probably won't produce code that is
+;; that smart, but it is theoretically possible
 
 (((eax <- 10)   ;; initial argument to fib.
-  (call :fib)   ;; the call
-  (eax += eax)  ;; encode & print
-  (eax += 1)
+  (eax += eax)  ;; start encoding initial argument
+  (eax += 1)    ;; finish encoding initial argument
+  (call :fib)   ;; make the call and then print the result
   (eax <- (print eax)))
  (:fib
-  (esp -= 8)    ;; save space on the stack for 2 temporaries
-  (cjump eax < 2 :base :recur)
-  :base         ;; non-recursive case
-  (eax <- 1)    ;; store result
-  (esp += 8)    ;; free local space (unused in this case)
-  (return)      ;; return
-  :recur        ;; recursive case
+  (esp -= 8)             ;; save space on the stack for 2 temporaries
+  (cjump eax <= 3 :base :recur)
+  :base                  ;; non-recursive case
+  (eax <- 3)             ;; store result
+  (esp += 8)             ;; free local space (unused in this case)
+  (return)               ;; return
+  :recur                 ;; recursive case
   ((mem ebp -4) <- eax)  ;; save the argument
-  (eax -= 1)    ;; decrement the argument
-  (call :fib)   ;; make first recursive call
+  (eax -= 2)             ;; decrement the argument
+  (call :fib)            ;; make first recursive call
   ((mem ebp -8) <- eax)  ;; save the result of first call
   (eax <- (mem ebp -4))  ;; get our saved argument
-  (eax -= 2)    ;; compute arg to second recursive call
-  (call :fib)   ;; call
-  (esi <- (mem ebp -8))  ;; get the saved result from first call
-  (eax += esi)  ;; sum the two results
-  (esp += 8)    ;; free the local storage
-  (return)))    ;; and we're done.
+  (eax -= 4)             ;; compute arg to second recursive call
+  (call :fib)            ;; call
+  (edx <- (mem ebp -8))  ;; get the saved result from first call
+  (eax += edx)           ;; sum the two results
+  (eax -= 1)             ;; decrement one to cope with summing encoded numbers
+  (esp += 8)             ;; free the local storage
+  (return)))             ;; and we're done.
