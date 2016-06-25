@@ -7,9 +7,9 @@ import Control.Monad.Error
 import Control.Monad.Reader
 
 import Glue
-import qualified L2.AbsL2 as L2
-import L2.PrintL2
-import L1.AbsL1
+import qualified L2.AbsL as L2
+import L2.PrintL
+import L1.AbsL
 import Spill.Spill
 import Liveness.Liveness
 import Graph.Interference

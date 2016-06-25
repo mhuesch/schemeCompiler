@@ -8,8 +8,8 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Reader
 import Data.List
 
-import L2.AbsL2
-import L2.PrintL2
+import L2.AbsL
+import L2.PrintL
 import Graph.Graph
 import Graph.GraphGlue
 

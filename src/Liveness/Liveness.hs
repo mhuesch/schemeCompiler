@@ -9,8 +9,8 @@ import qualified Data.Set as S
 import qualified Data.Map as M
 
 import Glue
-import L2.AbsL2
-import L2.PrintL2
+import L2.AbsL
+import L2.PrintL
 
 
 

@@ -5,8 +5,8 @@ import Control.Monad
 import System.Exit (exitFailure)
 import System.Environment
 
-import L2.AbsL2
-import L2.ParL2
+import L2.AbsL
+import L2.ParL
 import L2.ErrM
 import Liveness.Liveness
 import Graph.GraphGlue

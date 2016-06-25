@@ -1,6 +1,6 @@
 module Glue where
 
-import L2.AbsL2
+import L2.AbsL
 
 data LivenessResult = LivenessResult { iInfos :: [InstructionInfo]
                                      , allVars :: [Variable]

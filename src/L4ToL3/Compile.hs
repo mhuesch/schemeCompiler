@@ -4,8 +4,8 @@ module L4ToL3.Compile where
 import Control.Monad.State
 import qualified Data.Map as M
 
-import qualified L4.AbsL4 as L4
-import qualified L3.AbsL3 as L3
+import qualified L4.AbsL as L4
+import qualified L3.AbsL as L3
 
 translate :: L4.Program -> L3.Program
 translate (L4.Prog e fs) = (L3.Prog (compileE e)

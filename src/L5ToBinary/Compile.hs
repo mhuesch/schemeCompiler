@@ -1,6 +1,6 @@
 module L5ToBinary.Compile where
 
-import qualified L5.AbsL5 as L5
+import qualified L5.AbsL as L5
 import qualified L1Tox64.Compile as L1c
 import qualified L2ToL1.Compile as L2c
 import qualified L3ToL2.Compile as L3c

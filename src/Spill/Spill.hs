@@ -6,7 +6,7 @@ import Control.Monad.Identity
 import Control.Monad.Reader
 import Control.Monad.State
 
-import L2.AbsL2
+import L2.AbsL
 
 
 spill :: [Instruction] -> Variable -> Int -> Variable -> [Instruction]

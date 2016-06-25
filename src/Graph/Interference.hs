@@ -4,7 +4,7 @@ module Graph.Interference where
 import Data.List
 
 import Glue
-import L2.AbsL2
+import L2.AbsL
 import Graph.Graph
 import Graph.GraphGlue
 

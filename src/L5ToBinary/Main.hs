@@ -7,7 +7,7 @@ import System.Environment
 import System.Directory (doesFileExist)
 import System.Cmd (rawSystem)
 
-import L5.ParL5
+import L5.ParL
 import L5.ErrM
 import L5ToBinary.Compile
 

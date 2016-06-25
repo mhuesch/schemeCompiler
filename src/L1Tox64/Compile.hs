@@ -6,7 +6,7 @@ import Control.Monad.Reader
 import Control.Monad.Identity
 import Data.List
 
-import L1.AbsL1
+import L1.AbsL
 
 
 assembleProgram :: Program -> String

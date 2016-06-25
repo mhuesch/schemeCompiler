@@ -7,7 +7,7 @@ import System.Cmd
 import System.Exit
 import System.Directory
 
-import L1.ParL1
+import L1.ParL
 import L1.ErrM
 
 import L1Tox64.Compile

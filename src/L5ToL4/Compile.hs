@@ -7,8 +7,8 @@ import Control.Monad.Reader
 import Data.List
 import qualified Data.Map as M
 
-import qualified L5.AbsL5 as L5
-import qualified L4.AbsL4 as L4
+import qualified L5.AbsL as L5
+import qualified L4.AbsL as L4
 
 data CountFunState = CountFunState { xCount :: Int
                                    , labCount :: Int

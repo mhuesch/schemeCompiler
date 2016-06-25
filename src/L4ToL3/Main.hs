@@ -5,10 +5,10 @@ import Control.Monad
 import System.Exit (exitFailure)
 import System.Environment
 
-import L4.ParL4
+import L4.ParL
 import L4.ErrM
 import L4ToL3.Compile
-import L3.PrintL3
+import L3.PrintL
 
 main :: IO ()
 main = do
