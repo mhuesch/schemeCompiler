@@ -34,14 +34,15 @@ Library
                      L4ToL3.Compile,
                      L5ToL4.Compile,
                      L5ToBinary.Compile
-  Build-depends:     base >=4.8 && <4.9,
-                     mtl >=2.2 && <2.3,
-                     transformers >=0.4 && <0.5,
-                     containers >=0.5 && <0.6,
-                     parsec >=3.1 && <3.2,
-                     directory >=1.2 && <1.3,
-                     process >=1.2 && <1.3,
-                     array >=0.5 && <0.6
+  Build-depends:     base,
+                     mtl,
+                     transformers,
+                     containers,
+                     parsec,
+                     directory,
+                     process,
+                     array,
+                     BNFC
   build-tools:       alex, happy
 
 executable L1c

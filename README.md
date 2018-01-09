@@ -25,10 +25,6 @@ pred ::= number? | a?
 ```
 
 # To build
-1. Install [BNFC](http://bnfc.digitalgrammars.com/).
-  * `cabal install bnfc` works.
-  * Ensure that `bnfc` is on your path.
-2. From the project root, run `./src/genAll.sh`
-3. `cabal install`
-4. ???
-5. Profit
+1. `stack build`. It should download & install dependencies, but fail to build because of missing modules.
+2. From the project root, run `./src/genAll.sh`. This will create the missing modules.
+3. `stack build`

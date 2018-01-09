@@ -1,7 +1,5 @@
 *.DS_Store
-cabal.sandbox.config
-.cabal-sandbox/
-dist/
+.stack-work/
 
 *.hi
 *.o
