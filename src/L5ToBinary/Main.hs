@@ -10,6 +10,7 @@ import System.Cmd (rawSystem)
 import L5.ParL
 import L5.ErrM
 import L5ToBinary.Compile
+import Paths_schemeCompiler
 
 main :: IO ()
 main = do
@@ -17,10 +18,7 @@ main = do
     when (length args /= 1) $ do
         putStrLn "usage: filename-to-compile"
         exitFailure
-    runtimeOExists <- doesFileExist "runtime.o"
-    when (not runtimeOExists) $ do
-        putStrLn "No runtime.o. Exiting."
-        exitFailure
+    runtimeOPath <- getDataFileName "data/runtime.o"
     ts <- liftM myLexer $ readFile (head args)
     case pProgram ts of
       Bad s -> do
@@ -34,8 +32,8 @@ main = do
           let filename = "prog.S"
           writeFile filename assem
           rawSystem "as" ["--64", "-o", "prog.o", "prog.S"] >>= throwIfError
-          rawSystem "gcc" ["-m64", "-o", "a.out", "prog.o", "runtime.o"] >>= throwIfError
-        
+          rawSystem "gcc" ["-m64", "-o", "a.out", "prog.o", runtimeOPath] >>= throwIfError
+
 
 throwIfError :: ExitCode -> IO ()
 throwIfError ExitSuccess = return ()

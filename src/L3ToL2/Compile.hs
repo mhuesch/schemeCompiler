@@ -297,10 +297,10 @@ compileLabel (L3.Label name) = L2.Label name
 
 
 intToPNI2 :: Int -> L2.PosNegInteger
-intToPNI2 = undefined
+intToPNI2 = L2.PosNegInteger . show
 
 intToPNI3 :: Int -> L3.PosNegInteger
-intToPNI3 = undefined
+intToPNI3 = L3.PosNegInteger . show
 
 intToN2 :: Int -> L2.N
-intToN2 = undefined
+intToN2 = L2.Num . intToPNI2

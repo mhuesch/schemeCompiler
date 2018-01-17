@@ -11,6 +11,7 @@ import L1.ParL
 import L1.ErrM
 
 import L1Tox64.Compile
+import Paths_schemeCompiler
 
 main :: IO ()
 main = do
@@ -18,8 +19,7 @@ main = do
     when (length args /= 1) $ do
         putStrLn "usage: filename"
         exitFailure
-    runtimeOExists <- doesFileExist "runtime.o"
-    unless runtimeOExists $ putStrLn "No runtime.o. Exiting." >> exitFailure
+    runtimeOPath <- getDataFileName "data/runtime.o"
     contents <- readFile (head args)
     let ts = myLexer contents
     case pProgram ts of
@@ -29,7 +29,7 @@ main = do
                     putStrLn s
       Ok tree -> do writeFile "prog.S" (assembleProgram tree)
                     rawSystem "as" ["--64", "-o", "prog.o", "prog.S"] >>= throwIfError
-                    rawSystem "gcc" ["-m64", "-o", "a.out", "prog.o", "runtime.o"] >>= throwIfError
+                    rawSystem "gcc" ["-m64", "-o", "a.out", "prog.o", runtimeOPath] >>= throwIfError
 
 throwIfError :: ExitCode -> IO ()
 throwIfError ExitSuccess = return ()

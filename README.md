@@ -25,6 +25,7 @@ pred ::= number? | a?
 ```
 
 # To build
+0. `cd data && gcc -m64 -c -O2 -o runtime.o runtime-nogc.c && cd -`
 1. `stack build`. It should download & install dependencies, but fail to build because of missing modules.
 2. From the project root, run `./src/genAll.sh`. This will create the missing modules.
 3. `stack build`

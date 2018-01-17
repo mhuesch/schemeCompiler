@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+void *go();
+
 void print_content(void** in, int depth) {
   if (depth >= 4) {
     printf("...");
